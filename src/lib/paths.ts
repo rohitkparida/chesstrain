@@ -12,7 +12,8 @@ export function routePath(pathname: string): string {
 }
 
 function normalizeRoute(path: string): string {
-	const normalized = path.startsWith('/') ? path : `/${path}`;
+	let normalized = path.startsWith('/') ? path : `/${path}`;
+	if (base && normalized.startsWith(base)) normalized = normalized.slice(base.length) || '/';
 	if (/^\/login(?:\/login)+(?:\/|$)/.test(normalized)) return '/login';
 	return normalized;
 }
