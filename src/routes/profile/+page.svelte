@@ -6,6 +6,7 @@
   import { sessionStore } from '../../stores/session';
   import { authStore, lockLocalAccount, setLocalPassword } from '../../stores/auth';
   import type { ThemePreference } from '$lib/account/profile';
+  import { appPath } from '$lib/paths';
 
   const initialProfile = get(profileStore);
   let profile = $derived($profileStore);
@@ -84,7 +85,7 @@
 
   async function logOut() {
     lockLocalAccount();
-    await goto('/login');
+    await goto(appPath('/login'));
   }
 
   function replayIntroduction() {
@@ -95,7 +96,7 @@
 <main class="profile-page">
   <header class="page-header">
     <p class="eyebrow">ACCOUNT</p>
-    <h1>Make Magnus yours</h1>
+    <h1>Profile</h1>
   </header>
 
   <section class="profile-section" aria-labelledby="identity-heading">
@@ -103,16 +104,16 @@
       <h2 id="identity-heading">Identity</h2>
     </div>
     <label>
-      Sign-in username
+      Username
       <input value={auth.username} readonly aria-describedby="username-help" />
-      <span id="username-help" class="field-help">This identifies your account and cannot be changed here.</span>
+      <span id="username-help" class="field-help">Account name</span>
     </label>
     <label>
       Display name
       <input bind:value={displayName} maxlength="50" placeholder="e.g. Rohit" autocomplete="name" />
     </label>
     <label>
-      Chess.com username
+      Chess.com name
       <input bind:value={chessComUsername} maxlength="50" placeholder="Used to load your public games" autocomplete="username" />
     </label>
   </section>
@@ -135,7 +136,7 @@
     <label>
       Theme
       <select bind:value={theme}>
-        <option value="system">Use system preference</option>
+        <option value="system">System</option>
         <option value="dark">Dark</option>
         <option value="light">Light</option>
       </select>
@@ -143,15 +144,15 @@
     <label class="checkbox-label">
       <input type="checkbox" bind:checked={showDefinitions} />
       <span>
-        Show chess definitions on hover
+        Show definitions on hover
       </span>
     </label>
     <label>
       Exercise difficulty
       <input type="range" min="-300" max="300" step="50" bind:value={difficultyOffset} aria-describedby="difficulty-help" />
-      <span id="difficulty-help" class="field-help">Adjusts the Lichess exercise target around your starting rating: {difficultyOffset > 0 ? '+' : ''}{difficultyOffset}.</span>
+      <span id="difficulty-help" class="field-help">Adjusts exercise difficulty: {difficultyOffset > 0 ? '+' : ''}{difficultyOffset}.</span>
     </label>
-    <a class="dictionary-link" href="/dictionary">Open the visual chess dictionary</a>
+    <a class="dictionary-link" href={appPath('/dictionary')}>Open dictionary</a>
   </section>
 
   <section class="profile-section" aria-labelledby="security-heading">
@@ -189,12 +190,12 @@
     <div class="section-heading">
       <h2 id="help-heading">Getting started</h2>
     </div>
-    <button class="disclosure" type="button" onclick={replayIntroduction}>Show introduction again</button>
+    <button class="disclosure" type="button" onclick={replayIntroduction}>Replay introduction</button>
   </section>
 
   <footer class="actions">
-    <ActionButton variant="quiet" onclick={resetForm}>Discard</ActionButton>
-    <ActionButton variant="primary" onclick={saveProfile}>Save profile</ActionButton>
+    <ActionButton variant="quiet" onclick={resetForm}>Cancel</ActionButton>
+    <ActionButton variant="primary" onclick={saveProfile}>Save</ActionButton>
     {#if saved}<span class="saved" role="status">Saved</span>{/if}
   </footer>
 </main>

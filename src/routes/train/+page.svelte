@@ -57,12 +57,12 @@
 <main class="train-home">
   <header class="intro">
     <p class="eyebrow">Train</p>
-    <h1>Choose a focus</h1>
+    <h1>Choose a skill</h1>
   </header>
 
   {#if recommendedModule}
     <div class="recommended">
-      <span><small>Recommended next</small><strong>{recommendedModule.name}</strong><span>{recommendedModule.description}</span></span>
+      <span><small>Next up</small><strong>{recommendedModule.name}</strong><span>{recommendedModule.description}</span></span>
       <a class="recommended-action" aria-label={`Start ${recommendedModule.name}`} href={recommendedModule.href}>Start</a>
     </div>
   {/if}

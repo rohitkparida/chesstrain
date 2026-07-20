@@ -161,7 +161,7 @@
 
   <div class="board-surface">
     {#if visibleAnnotations.length > 0}
-      <svg class="annotations" viewBox="0 0 8 8" role="img" aria-label="Board annotations">
+        <svg class="annotations" viewBox="0 0 8 8" role="img" aria-label="Move arrows and highlights">
         <defs>
           {#each visibleAnnotations as annotation, index}
             {#if annotation.kind !== 'highlight' && annotation.to}

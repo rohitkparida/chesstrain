@@ -29,7 +29,7 @@
 
 <main class="module-container" data-workflow="task-commit-feedback-continue">
   <div class="task-line">
-    <span class="task-label">YOUR TASK</span>
+    <span class="task-label">Task</span>
     <span><GlossaryText text={task} /></span>
   </div>
   <TaskMetadata {exposure} {source} {reason} {verification} />

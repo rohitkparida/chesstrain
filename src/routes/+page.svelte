@@ -6,6 +6,7 @@
   import { validatedExercises } from '$lib/learning/moduleExercises';
   import { recentFingerprints } from '$lib/learning/generator';
   import { sessionStore } from '../stores/session';
+  import { appPath } from '$lib/paths';
 
   type PlanEntry = {
     id: string;
@@ -90,7 +91,7 @@
 {/if}
 
 <div class="train-link">
-  <a href="/train">Choose another skill</a>
+  <a href={appPath('/train')}>Browse skills</a>
 </div>
 
 <style>

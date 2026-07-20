@@ -48,25 +48,25 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   async function importUsername() {
     const userId = get(sessionStore).userId ?? 'local-player';
     const coordinator = startMistakeSync(userId, username, true);
-    if (!coordinator) { status = 'Enter your Chess.com username first.'; return; }
+    if (!coordinator) { status = 'Enter your Chess.com name first.'; return; }
     backgroundCoordinator = coordinator;
-    status = 'Finding new games and checking them in the background...';
+    status = 'Finding mistakes...';
     analyzing = true;
     await loadBackgroundMistakes();
   }
 
   function analyzeGame() {
-    try { candidates = extractGameMoves(pgn, color, username.trim() || undefined); } catch { status = 'That PGN could not be read. Paste the complete Chess.com PGN.'; return; }
+    try { candidates = extractGameMoves(pgn, color, username.trim() || undefined); } catch { status = 'That PGN could not be read. Check the pasted game.'; return; }
     if (!candidates.length) { status = 'No moves found for that side.'; return; }
     mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisGeneration++;
-    status = `Analyzing move 1 of ${candidates.length} locally with Stockfish...`;
+    status = `Analyzing move 1 of ${candidates.length}...`;
     engine?.terminate(); engine = new StockfishEngine(); void analyzeNext(0, analysisGeneration);
   }
   async function analyzeNext(index: number, generation = analysisGeneration) {
     if (generation !== analysisGeneration) return;
     const candidate = candidates[index];
     if (!candidate || !engine) { analyzing = false; status = mistakes.length ? `Found ${mistakes.length} move${mistakes.length === 1 ? '' : 's'} that need review.` : 'No moves worsened your position by about 0.8 pawn or more.'; persistMistakes(); return; }
-    status = `Analyzing move ${index + 1} of ${candidates.length} locally with Stockfish...`;
+      status = `Analyzing move ${index + 1} of ${candidates.length}...`;
     const activeEngine = engine;
     try {
       const before = await activeEngine.getEval(candidate.fen);
@@ -79,7 +79,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       persistMistakes();
       void analyzeNext(index + 1, generation);
     } catch {
-      if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Stockfish analysis stopped before it finished.'; }
+      if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; }
     }
   }
   function cancelAnalysis() {
@@ -128,10 +128,10 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     if (!coordinator) return;
     backgroundCoordinator = coordinator;
     analyzing = true;
-    status = 'Checking for newer games in the background...';
+    status = 'Finding newer mistakes...';
     await loadBackgroundMistakes();
   }
-  function reset() { pgn = ''; username = ''; candidates = []; mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; showImportOptions = false; feedback = ''; replay = []; replayStep = 0; replayReady = false; status = 'Enter a Chess.com username or paste a PGN.'; }
+  function reset() { pgn = ''; username = ''; candidates = []; mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; showImportOptions = false; feedback = ''; replay = []; replayStep = 0; replayReady = false; status = 'Enter a Chess.com name or paste a PGN.'; }
   function persistMistakes() {
     if (typeof localStorage === 'undefined') return;
     const userId = get(sessionStore).userId ?? 'local-player';
@@ -155,21 +155,21 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   onDestroy(() => { if (analyzing) persistMistakes(); engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="My Mistakes" task="Import a Chess.com game and review your biggest mistakes." source="personal-game" onReset={reset}>
+<TrainingModuleShell title="My Mistakes" task="Turn your mistakes into puzzles." source="personal-game" onReset={reset}>
   {#if mistakes.length === 0 && !analyzing}
     <div class="import-panel">
-      <label for="username">Chess.com username</label>
-      <div class="row"><input id="username" bind:value={username} placeholder="e.g. hikaru" /><button class="primary" onclick={importUsername}>Find new mistakes</button></div>
-      <button class="secondary-link" type="button" onclick={() => showImportOptions = !showImportOptions} aria-expanded={showImportOptions}>{showImportOptions ? 'Hide PGN import' : 'Use a pasted PGN instead'}</button>
+      <label for="username">Chess.com name</label>
+      <div class="row"><input id="username" bind:value={username} placeholder="e.g. hikaru" /><button class="primary" onclick={importUsername}>Find mistakes</button></div>
+      <button class="secondary-link" type="button" onclick={() => showImportOptions = !showImportOptions} aria-expanded={showImportOptions}>{showImportOptions ? 'Hide PGN' : 'Paste a PGN'}</button>
       {#if showImportOptions}
-        <label for="pgn">Chess.com PGN</label>
-        <textarea id="pgn" bind:value={pgn} placeholder="Paste the complete Chess.com PGN here..."></textarea>
-        <div class="row">{#if hasAmbiguousAccountColor(pgn, username)}<label for="side">Fallback side</label><select id="side" bind:value={color}><option value="w">White</option><option value="b">Black</option></select>{:else}<span class="detected">Your side will be detected from the PGN headers.</span>{/if}<button class="primary" onclick={analyzeGame}>Analyze game</button></div>
+        <label for="pgn">PGN</label>
+        <textarea id="pgn" bind:value={pgn} placeholder="Paste PGN here..."></textarea>
+        <div class="row">{#if hasAmbiguousAccountColor(pgn, username)}<label for="side">Your color</label><select id="side" bind:value={color}><option value="w">White</option><option value="b">Black</option></select>{:else}<span class="detected">Color detected from PGN</span>{/if}<button class="primary" onclick={analyzeGame}>Analyze</button></div>
       {/if}
     </div>
   {/if}
   <p class="status" role="status">{status}</p>
-  {#if analyzing}<div class="analysis-progress"><p class="status">Stockfish is checking your games in the background.</p><button class="quiet" onclick={cancelAnalysis}>Pause analysis</button></div>{/if}
+  {#if analyzing}<div class="analysis-progress"><p class="status">Analyzing games...</p><button class="quiet" onclick={cancelAnalysis}>Pause</button></div>{/if}
   {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<button class="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</button>{/if}
   {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><button class="primary" onclick={reviewAgain}>Review again</button><button class="quiet" onclick={analyzeNewerGames}>Analyze newer games</button></div></div>{/if}
   {#if replayReady && mistakes[active]}

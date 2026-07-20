@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { appPath } from '$lib/paths';
   import { dictionaryEntry } from '$lib/chess/dictionary';
   import { profileStore } from '../stores/profile';
   import type { Snippet } from 'svelte';
@@ -44,7 +45,7 @@
       <span class="definition-popover" id={id} role="dialog" aria-label={`${entry.term} definition`}>
         <strong>{entry.term}</strong>
         <span>{entry.shortDefinition}</span>
-        <a href={`/dictionary#${entry.id}`}>See visual definition</a>
+        <a href={`${appPath('/dictionary')}#${entry.id}`}>Open definition</a>
       </span>
     {/if}
   </span>

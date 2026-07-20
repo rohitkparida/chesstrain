@@ -15,7 +15,7 @@
   };
 </script>
 
-<p class="task-meta" aria-label="Exercise details">
+<p class="task-meta" aria-label="Exercise information">
   <span><GlossaryText text={exposure === 'new' ? 'New' : exposure} /></span>
   {#if source}<span><GlossaryText text={sourceLabels[String(source) as ExerciseSource]} /></span>{/if}
   {#if reason}<span><GlossaryText text={reason} /></span>{/if}

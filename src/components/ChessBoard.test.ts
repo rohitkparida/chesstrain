@@ -16,8 +16,8 @@ describe('ChessBoard state contract', () => {
 	it('transforms annotations when manually flipped', async () => {
 		render(ChessBoard, { fen: startFen, annotations: [{ from: 'e2', to: 'e4', kind: 'arrow', label: 'Suggested move' }] });
 		await fireEvent.click(screen.getByTitle('Flip board'));
-		expect(screen.getByRole('img', { name: 'Board annotations' }).querySelector('line')).toHaveAttribute('x1', '3.5');
-		expect(screen.getByRole('img', { name: 'Board annotations' }).querySelector('line')).toHaveAttribute('y1', '1.5');
+		expect(screen.getByRole('img', { name: 'Move arrows and highlights' }).querySelector('line')).toHaveAttribute('x1', '3.5');
+		expect(screen.getByRole('img', { name: 'Move arrows and highlights' }).querySelector('line')).toHaveAttribute('y1', '1.5');
 	});
 
 	it('shows the turn from the supplied FEN', () => {

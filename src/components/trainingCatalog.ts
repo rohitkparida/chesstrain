@@ -10,62 +10,14 @@ export interface TrainingModulePresentation {
 }
 
 export const TRAINING_MODULES: readonly TrainingModulePresentation[] = [
-	{
-		module: 'board-grip',
-		name: 'Board Vision',
-		description: 'Name squares, find attackers, and spot loose pieces.',
-		href: appPath('/train/squares'),
-		icon: '♙'
-	},
-	{
-		module: 'tactics',
-		name: 'Tactics',
-		description: 'Recognize forcing patterns and tactical threats.',
-		href: appPath('/train/tactics'),
-		icon: '⚔'
-	},
-	{
-		module: 'calculation',
-		name: 'Calculation',
-		description: 'Calculate a complete line without moving the pieces.',
-		href: appPath('/train/calculation'),
-		icon: '◎'
-	},
-	{
-		module: 'positional',
-		name: 'Positional',
-		description: 'Evaluate positions and rank candidate plans.',
-		href: appPath('/train/positional'),
-		icon: '♗'
-	},
-	{
-		module: 'decision',
-		name: 'Decision',
-		description: 'Use a repeatable checklist before committing to a move.',
-		href: appPath('/train/decision'),
-		icon: '✓'
-	},
-	{
-		module: 'openings',
-		name: 'Openings',
-		description: 'Practice your repertoire and respond to deviations.',
-		href: appPath('/train/opening'),
-		icon: '♜'
-	},
-	{
-		module: 'endgame',
-		name: 'Endgame',
-		description: 'Practice endgame technique against Stockfish.',
-		href: appPath('/train/endgame'),
-		icon: '♔'
-	},
-	{
-		module: 'mistakes',
-		name: 'My Mistakes',
-		description: 'Turn your own game errors into focused puzzles.',
-		href: appPath('/train/mistakes'),
-		icon: '↺'
-	}
+	{ module: 'board-grip', name: 'Board Vision', description: 'Name squares, find attackers, and spot loose pieces.', href: appPath('/train/squares'), icon: 'board' },
+	{ module: 'tactics', name: 'Tactics', description: 'Recognize forcing patterns and tactical threats.', href: appPath('/train/tactics'), icon: 'tactics' },
+	{ module: 'calculation', name: 'Calculation', description: 'Calculate a complete line without moving the pieces.', href: appPath('/train/calculation'), icon: 'calculation' },
+	{ module: 'positional', name: 'Positional', description: 'Evaluate positions and rank candidate plans.', href: appPath('/train/positional'), icon: 'positional' },
+	{ module: 'decision', name: 'Decision', description: 'Use a repeatable checklist before committing to a move.', href: appPath('/train/decision'), icon: 'decision' },
+	{ module: 'openings', name: 'Openings', description: 'Practice your repertoire and respond to deviations.', href: appPath('/train/opening'), icon: 'opening' },
+	{ module: 'endgame', name: 'Endgame', description: 'Practice endgame technique against Stockfish.', href: appPath('/train/endgame'), icon: 'endgame' },
+	{ module: 'mistakes', name: 'My Mistakes', description: 'Turn your own game errors into focused puzzles.', href: appPath('/train/mistakes'), icon: 'mistakes' }
 ];
 
 export const DAILY_PLAN_EXERCISES: readonly TrainingExercise[] = TRAINING_MODULES.flatMap((entry) =>

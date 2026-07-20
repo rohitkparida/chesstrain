@@ -13,7 +13,7 @@
   }>();
 </script>
 
-<section class="metrics" aria-label={title} data-stage="feedback">
+<section class="metrics" aria-label={title === 'Tactics evidence' ? 'Tactics feedback' : title} data-stage="feedback">
   <h3><GlossaryText text={title} /></h3>
   {#each items as item}
     <div class="metric-row">

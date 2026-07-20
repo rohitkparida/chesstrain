@@ -115,7 +115,7 @@
     onMove={handleMove}
     playable={processReady && !thinking && !committed}
     showUndo={false}
-    inactiveLabel={thinking ? 'Engine is replying...' : committed ? 'Commitment complete. Continue to the next scenario.' : `Complete structured process ${process.completed}/${process.total - 1}`}
+    inactiveLabel={thinking ? 'Engine thinking...' : committed ? 'Move played. Continue.' : `Step ${process.completed} of ${process.total - 1}`}
   />
 
   <div class="steps">
@@ -150,14 +150,14 @@
     {#if candidateIds.length >= 2}
       <div class="commitment-step" aria-label="Final commitment">
         <strong>4. Final commitment</strong>
-        <span>{processReady ? 'Choose your move on the board.' : 'Choose the refutation, then commit on the board.'}</span>
+        <span>{processReady ? 'Play your move on the board.' : 'Choose the best reply, then play your move.'}</span>
       </div>
     {/if}
   </div>
 
   {#if rounds > 0}
     <ObjectiveMetrics title="Decision evidence" items={[
-      { label: 'Checklist score', value: `${Math.round(process.processScore * 100)}%` },
+      { label: 'Process score', value: `${Math.round(process.processScore * 100)}%` },
       { label: 'Move result', value: lastMoveQuality === null ? 'Pending' : lastMoveQuality === 1 ? 'Kept the expected result' : 'Needs review' },
       { label: 'Positions attempted', value: `${rounds}` }
     ]} note="Process quality measures the checklist. Move quality is scored separately from the process." />
@@ -170,7 +170,7 @@
     </div>
   {/if}
   <p class="status-text">{feedback}</p>
-  {#if committed && !thinking}<button class="next" onclick={nextScenario}>Next scenario</button>{/if}
+      {#if committed && !thinking}<button class="next" onclick={nextScenario}>Next</button>{/if}
 </TrainingModuleShell>
 
 <style>

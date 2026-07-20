@@ -124,7 +124,7 @@
           {/each}
         </div>
       </div>
-      <button class="submit-btn" onclick={submitAnalysis}>Check position review</button>
+      <button class="submit-btn" onclick={submitAnalysis}>Check position</button>
     {/if}
   </div>
 

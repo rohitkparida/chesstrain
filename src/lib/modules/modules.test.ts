@@ -11,7 +11,7 @@ describe('module learning interactions', () => {
     resetSession();
     render(Calculation);
     await fireEvent.input(screen.getByPlaceholderText('e.g. Nf3 d5 Nxe5'), { target: { value: 'Nxf7 Rxf7 Qd4' } });
-    await fireEvent.click(screen.getByText('Verify Line'));
+    await fireEvent.click(screen.getByText('Check line'));
     expect(get(sessionStore).trainingAttempts.some((attempt) => attempt.module === 'calculation')).toBe(true);
   });
 
@@ -29,7 +29,7 @@ describe('module learning interactions', () => {
   it('does not reveal the calculation solution for a partial line', async () => {
     render(Calculation);
     await fireEvent.input(screen.getByPlaceholderText('e.g. Nf3 d5 Nxe5'), { target: { value: 'Nxf7' } });
-    await fireEvent.click(screen.getByText('Verify Line'));
+    await fireEvent.click(screen.getByText('Check line'));
     expect(screen.getByText(/incomplete/)).toBeInTheDocument();
     expect(screen.queryByText('Best path')).not.toBeInTheDocument();
   });
@@ -38,7 +38,7 @@ describe('module learning interactions', () => {
     render(Positional);
     await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByRole('button', { name: /Check position review/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Check position/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Chess board, White to move')).toBeInTheDocument();
   });
 });

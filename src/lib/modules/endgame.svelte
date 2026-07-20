@@ -100,7 +100,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Endgame Practice vs Stockfish" task={scenario.goal ?? 'Preserve the expected result against Stockfish.'} onReset={reset}>
+<TrainingModuleShell title="Endgame practice" task={scenario.goal ?? 'Keep the expected result.'} onReset={reset}>
   <p class="scenario-meta">{scenario.title}</p>
   <ChessBoard
     fen={currentFen}
@@ -108,7 +108,7 @@
     playable={!thinking && terminalState === 'ongoing'}
     annotations={revealedCues ? cueAnnotations : []}
     showUndo={false}
-    inactiveLabel={thinking ? 'Engine is replying...' : terminalState === 'ongoing' ? 'Choose a legal endgame move.' : `Terminal: ${terminalState}`}
+    inactiveLabel={thinking ? 'Engine thinking...' : terminalState === 'ongoing' ? 'Choose a move.' : terminalState}
   />
 
   {#if rounds > 0}
@@ -125,9 +125,9 @@
       <span>{scenario.cues[0].copy}</span>
     </div>
   {/if}
-  {#if lastResult}<p class="result-text" role="status">Result after your move: {lastResult}</p>{/if}
+  {#if lastResult}<p class="result-text" role="status">Result: {lastResult}</p>{/if}
   <p class="status-text" role="status">{feedback}</p>
-  {#if rounds > 0 && !thinking}<button class="next" onclick={nextScenario}>Next scenario</button>{/if}
+  {#if rounds > 0 && !thinking}<button class="next" onclick={nextScenario}>Next</button>{/if}
 </TrainingModuleShell>
 
 <style>

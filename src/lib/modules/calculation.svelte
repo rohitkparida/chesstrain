@@ -71,7 +71,7 @@
         blindfoldCountdown = 0;
         isBoardHidden = true;
         blindfoldReady = true;
-        feedback = "Board is dark. Enter your calculation sequence!";
+        feedback = "Board is hidden. Enter the line.";
       } else {
         blindfoldCountdown -= 1;
         feedback = `You have ${blindfoldCountdown} seconds to look at the board before it goes dark...`;
@@ -101,12 +101,12 @@
 
 <TrainingModuleShell
   title="Calculate the line"
-  task="Enter the best-move sequence, then verify it."
+  task="Enter the line, then check it."
   onReset={reset}
 >
   <details class="mode-actions">
     <summary>Try blindfold mode</summary>
-    <button class="blindfold-btn" onclick={startBlindfold} disabled={isBlindfold}>Start blindfold challenge</button>
+    <button class="blindfold-btn" onclick={startBlindfold} disabled={isBlindfold}>Start blindfold</button>
   </details>
 
   <div class="board-layout">
@@ -120,7 +120,7 @@
   <form class="controls" onsubmit={(event) => { event.preventDefault(); submitLine(); }}>
     <div class="input-row">
       <input bind:value={notationInput} placeholder="e.g. Nf3 d5 Nxe5" disabled={locked || (isBlindfold && !blindfoldReady)} />
-      <button class="verify-btn" type="submit" disabled={locked || (isBlindfold && !blindfoldReady)}>Verify Line</button>
+      <button class="verify-btn" type="submit" disabled={locked || (isBlindfold && !blindfoldReady)}>Check line</button>
     </div>
   </form>
 
@@ -154,7 +154,7 @@
           <button class="replay-arrow" aria-label="Next position" title="Next position" onclick={() => replayStep = Math.min(activeLine.fens.length - 1, replayStep + 1)} disabled={replayStep >= activeLine.fens.length - 1}>&#8594;</button>
         </div>
         {#if replay.divergedIndex !== null}
-          <p class="divergence">First divergence: ply {replay.divergedIndex + 1}</p>
+          <p class="divergence">First difference: move {replay.divergedIndex + 1}</p>
         {/if}
       {/if}
       <div class="tree-grid">
@@ -163,7 +163,7 @@
       </div>
     </div>
   {/if}
-  {#if locked}<button class="continue-btn" onclick={reset}>Try this calculation again</button>{/if}
+  {#if locked}<button class="continue-btn" onclick={reset}>Try again</button>{/if}
 </TrainingModuleShell>
 
 <style>
