@@ -25,7 +25,7 @@
     }
     onboardingOpen = auth.authenticated && !auth.guest && $profileStore.onboardingCompletedAt === null;
     if (!authenticated && path !== '/login') {
-      const returnTo = `${page.url.pathname}${page.url.search}${page.url.hash}`;
+      const returnTo = `${path}${page.url.search}${page.url.hash}`;
       void goto(`${appPath('/login')}?returnTo=${encodeURIComponent(returnTo)}`);
     }
     if (authenticated && path === '/login') {
