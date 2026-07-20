@@ -53,7 +53,7 @@
       {:else if termId === 'repertoire'}<span>Opening</span><b>→</b><span>Branch A</span><b>↘</b><span>Branch B</span>
       {:else if termId === 'calculation'}<span>Your move</span><b>→</b><span>Reply</span><b>→</b><span>Result</span>
       {:else if termId === 'development'}<span>Start</span><b>→</b><span>Develop</span><b>→</b><span>Castle</span>
-      {:else}<span>Improve king</span><b>→</b><span>Restrict</span><b>→</b><span>Promote</span>{/if}
+      {:else}<span>Improve king</span><b>→</b><span>Stop counterplay</span><b>→</b><span>Create a passer</span>{/if}
     </div></div>
   {:else if type === 'balance'}
     {#if termId === 'space'}
