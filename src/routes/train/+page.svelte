@@ -57,7 +57,7 @@
 <main class="train-home">
   <header class="intro">
     <p class="eyebrow">Train</p>
-    <h1>Choose a skill</h1>
+    <h1>Train a skill</h1>
   </header>
 
   {#if recommendedModule}

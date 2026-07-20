@@ -53,7 +53,7 @@
   <div class="plan-heading">
     <div>
       <p class="eyebrow">Today</p>
-      <h1 id="daily-plan-title">Your 10-minute plan</h1>
+    <h1 id="daily-plan-title">Today's plan</h1>
     </div>
     <div class="remaining" aria-label={`${formatMinutes(totalSeconds)} remaining`}>
       <strong>{formatMinutes(totalSeconds)}</strong>
@@ -69,7 +69,7 @@
   {#if nextEntry}
     <div class="next-exercise">
       <div>
-        <p class="label">Next exercise</p>
+        <p class="label">Next</p>
         <h2>{nextEntry.name}</h2>
         <p>{reasonLabel[nextEntry.reason] ?? nextEntry.reason} · {formatMinutes(nextEntry.seconds)}</p>
       </div>
@@ -77,12 +77,12 @@
     </div>
   {:else if complete}
     <section class="completion" aria-label="Completion summary">
-      <p class="label">Plan complete</p>
-      <h2>Nice work. You finished today’s focus.</h2>
-      <p>Come back tomorrow for the next review.</p>
+        <p class="label">Done for today</p>
+        <h2>Today's focus is complete.</h2>
+        <p>Come back tomorrow for your next review.</p>
     </section>
   {:else}
-    <p class="empty-plan">Nothing is scheduled yet. Visit Train to choose a focus.</p>
+    <p class="empty-plan">No exercises yet. Browse Train.</p>
   {/if}
 
   {#if entries.length > 0}

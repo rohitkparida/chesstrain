@@ -95,7 +95,7 @@
           <div class="logo-icon">N</div>
           <div>
             <div class="logo-title">MAGNUS ENGINE</div>
-            <div class="logo-sub">Adaptive Chess Training</div>
+            <div class="logo-sub">Chess training</div>
           </div>
         </a>
 
@@ -131,7 +131,7 @@
         <div class="logo-icon">N</div>
         <div>
           <div class="logo-title">MAGNUS ENGINE</div>
-          <div class="logo-sub">Adaptive Chess Training</div>
+            <div class="logo-sub">Chess training</div>
         </div>
       </a>
       <button class="theme-btn" onclick={toggleTheme} aria-label={light ? 'Switch to dark mode' : 'Switch to light mode'}>

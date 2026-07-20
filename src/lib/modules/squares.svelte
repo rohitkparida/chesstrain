@@ -91,7 +91,7 @@
     if (next.has(square)) next.delete(square);
     else next.add(square);
     selected = next;
-    feedback = `${selected.size} selected. Check when ready, or use No squares.`;
+    feedback = `${selected.size} selected. Check when ready, or choose None.`;
   }
 
   function reset() {
@@ -121,14 +121,14 @@
     <strong>{round.prompt}</strong>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
     <button onclick={() => orientation = orientation === 'black' ? 'white' : 'black'}>
-      Facing {orientation === 'black' ? 'Black' : 'White'} / Flip
+      {orientation === 'black' ? 'White view' : 'Black view'}
     </button>
   </div>
 
   {#if round.kind !== 'name-square' && !roundComplete}
     <div class="drill-actions">
-      <button onclick={() => evaluate(selected)} disabled={selected.size === 0}>Check selection</button>
-      <button onclick={() => evaluate(new Set(), true)}>No squares</button>
+      <button onclick={() => evaluate(selected)} disabled={selected.size === 0}>Check</button>
+      <button onclick={() => evaluate(new Set(), true)}>None</button>
       {#if selected.size > 0}
         <button class="ghost" onclick={() => selected = new Set()}>Clear</button>
       {/if}
