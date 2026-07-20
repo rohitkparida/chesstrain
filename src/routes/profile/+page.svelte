@@ -23,6 +23,18 @@
   let passwordMessage = $state('');
   let passwordError = $state('');
   let showPassword = $state(false);
+  let formOwner = $state('');
+
+  $effect(() => {
+    const owner = auth.username;
+    if (owner === formOwner) return;
+    formOwner = owner;
+    displayName = profile.displayName;
+    chessComUsername = profile.chessComUsername;
+    theme = profile.theme;
+    showDefinitions = profile.showDefinitions;
+    difficultyOffset = profile.difficultyOffset;
+  });
 
   function applyTheme(value: ThemePreference) {
     const light = value === 'light' || (value === 'system' && window.matchMedia?.('(prefers-color-scheme: light)').matches);

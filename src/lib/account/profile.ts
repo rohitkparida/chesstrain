@@ -12,6 +12,9 @@ export interface UserProfile {
 export const PROFILE_STORAGE_KEY = 'magnus_profile';
 
 export function defaultProfileFor(username: string): UserProfile {
+	if (username === GUEST_USERNAME) {
+		return { displayName: 'Guest', chessComUsername: '', theme: 'system', showDefinitions: true, difficultyOffset: 0, onboardingCompletedAt: null };
+	}
   const account = LOCAL_ACCOUNTS.find((candidate) => candidate.username === username) ?? LOCAL_ACCOUNTS[0];
   return { displayName: account.username, chessComUsername: account.chessComUsername, theme: 'system', showDefinitions: true, difficultyOffset: 0, onboardingCompletedAt: null };
 }
@@ -102,4 +105,4 @@ export function profileInitials(profile: UserProfile): string {
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
 }
-import { LOCAL_ACCOUNT_USERNAME, LOCAL_ACCOUNTS } from './localAuth';
+import { GUEST_USERNAME, LOCAL_ACCOUNT_USERNAME, LOCAL_ACCOUNTS } from './localAuth';
