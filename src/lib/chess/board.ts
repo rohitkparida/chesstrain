@@ -46,6 +46,18 @@ export function orientSquare(square: string, flipped: boolean): string {
 	return `${FILES[7 - file]}${9 - rank}`;
 }
 
+export type BoardRotation = 0 | 90 | 180 | 270;
+
+export function rotateSquare(square: string, rotation: BoardRotation): string {
+	if (rotation === 0 || square.length !== 2) return square;
+	const file = FILES.indexOf(square[0] as (typeof FILES)[number]);
+	const rank = Number(square[1]) - 1;
+	if (file < 0 || !Number.isInteger(rank) || rank < 0 || rank > 7) return square;
+	if (rotation === 90) return `${FILES[7 - rank]}${file + 1}`;
+	if (rotation === 180) return `${FILES[7 - file]}${8 - rank}`;
+	return `${FILES[rank]}${8 - file}`;
+}
+
 export function getLegalMoves(game: Chess, from?: string): string[] {
 	if (from) return game.moves({ square: from as ChessSquare });
 	return game.moves();

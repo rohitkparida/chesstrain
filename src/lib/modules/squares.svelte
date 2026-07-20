@@ -6,11 +6,18 @@
   import { accuracyPercent } from '../learning/objectiveScoring';
   import { recordTrainingAttempt } from '../../stores/session';
   import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
+  import { orientSquare, rotateSquare, type BoardRotation } from '../chess/board';
 
   type GripOrientation = 'white' | 'black';
 
   function randomOrientation(): GripOrientation {
     return Math.random() < 0.5 ? 'white' : 'black';
+  }
+
+  function randomRotation(kind: BoardGripRound['kind']): BoardRotation {
+    if (kind !== 'name-square') return 0;
+    const roll = Math.random();
+    return roll < 0.12 ? 90 : roll < 0.24 ? 270 : 0;
   }
 
   let round = $state<BoardGripRound>(nextBoardGripRound());
@@ -22,6 +29,7 @@
   let startedAt = Date.now();
   let feedback = $state('');
   let orientation = $state<GripOrientation>(randomOrientation());
+  let rotation = $state<BoardRotation>(0);
   let selected = $state<Set<string>>(new Set());
   let roundComplete = $state(false);
 
@@ -35,6 +43,7 @@
     round = nextBoardGripRound(round);
     selected = new Set();
     orientation = randomOrientation();
+    rotation = randomRotation(round.kind);
     roundComplete = false;
     startedAt = Date.now();
   }
@@ -103,10 +112,19 @@
     totalCorrectTimeMs = 0;
     selected = new Set();
     orientation = randomOrientation();
+    rotation = randomRotation(round.kind);
     roundComplete = false;
     startedAt = Date.now();
     feedback = '';
   }
+
+  function visibleSquare(square: string): string {
+    return rotateSquare(orientSquare(square, orientation === 'black'), rotation);
+  }
+
+  let displayedPrompt = $derived(round.kind === 'name-square' && round.targetSquare
+    ? `Find ${visibleSquare(round.targetSquare)}`
+    : round.prompt);
 
   function continueAfterWrong() {
     if (!roundComplete) return;
@@ -118,7 +136,7 @@
 <TrainingModuleShell title="Board Vision" task="Solve the current board-vision drill." onReset={reset}>
   <div class="prompt" aria-live="polite">
     <span>{round.label}</span>
-    <strong>{round.prompt}</strong>
+    <strong>{displayedPrompt}</strong>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
     <button onclick={() => orientation = orientation === 'black' ? 'white' : 'black'}>
       {orientation === 'black' ? 'White view' : 'Black view'}
@@ -141,6 +159,7 @@
       {pieces}
       {selected}
       orientation={orientation}
+      rotation={round.kind === 'name-square' ? rotation : 0}
       markedSquare={round.kind === 'attackers' ? round.targetSquare : undefined}
       correctSquares={roundComplete ? round.answers : []}
       onChoose={chooseSquare}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isDarkSquare, orientSquare, pieceGlyph } from '$lib/chess/board';
+  import { isDarkSquare, orientSquare, pieceGlyph, rotateSquare, type BoardRotation } from '$lib/chess/board';
   import type { PositionPiece } from '$lib/learning/nameTheSquare';
 
   let {
@@ -10,6 +10,7 @@
     correctSquares = [],
     onChoose,
     orientation = 'white',
+    rotation = 0,
     turn = 'w'
   } = $props<{
     squares: string[];
@@ -19,6 +20,7 @@
     correctSquares?: string[];
     onChoose: (square: string) => void;
     orientation?: 'white' | 'black' | 'side-to-move';
+    rotation?: BoardRotation;
     turn?: 'w' | 'b';
   }>();
 
@@ -28,7 +30,7 @@
 
 <div class="square-board" aria-label="Coordinate training board">
   {#each squares as square}
-    {@const visualSquare = orientSquare(square, viewFlipped)}
+    {@const visualSquare = rotateSquare(orientSquare(square, viewFlipped), rotation)}
     {@const piece = pieces[square]}
     <button
       class:dark={isDarkSquare(visualSquare)}
