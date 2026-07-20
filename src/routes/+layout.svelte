@@ -26,14 +26,16 @@
     onboardingOpen = auth.authenticated && !auth.guest && $profileStore.onboardingCompletedAt === null;
     if (!authenticated && path !== '/login') {
       const returnTo = `${path}${page.url.search}${page.url.hash}`;
-      void goto(`${appPath('/login')}?returnTo=${encodeURIComponent(returnTo)}`);
+      const target = `${appPath('/login')}?returnTo=${encodeURIComponent(returnTo)}`;
+      if (`${page.url.pathname}${page.url.search}` !== target) void goto(target, { replaceState: true });
     }
     if (authenticated && path === '/login') {
       const requested = page.url.searchParams.get('returnTo');
       const destination = requested && requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/login')
         ? requested
         : '/';
-      void goto(appPath(destination));
+      const target = appPath(destination);
+      if (`${page.url.pathname}${page.url.search}` !== target) void goto(target, { replaceState: true });
     }
   });
 
