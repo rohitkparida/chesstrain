@@ -5,6 +5,7 @@
   import ActionButton from '../../components/ActionButton.svelte';
   import { selectLocalAccount, signInLocal, startGuestMode } from '../../stores/auth';
   import { LOCAL_ACCOUNTS } from '$lib/account/localAuth';
+  import { appPath, routePath } from '$lib/paths';
 
   let username = $state('');
   let password = $state('');
@@ -18,8 +19,9 @@
 
   function returnDestination(): string {
     const value = page.url.searchParams.get('returnTo');
-    if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/login')) return '/';
-    return value;
+    const normalized = value ? routePath(value) : '';
+    if (!normalized || !normalized.startsWith('/') || normalized.startsWith('//') || normalized.startsWith('/login')) return '/';
+    return normalized;
   }
 
   function rememberUsername(value: string): void {
@@ -42,7 +44,7 @@
     const valid = await signInLocal(password);
     submitting = false;
     if (valid) {
-      await goto(returnDestination());
+      await goto(appPath(returnDestination()));
     } else {
       error = 'Incorrect username or password.';
       password = '';
@@ -51,7 +53,7 @@
 
   async function continueAsGuest() {
     startGuestMode();
-    await goto(returnDestination());
+    await goto(appPath(returnDestination()));
   }
 </script>
 

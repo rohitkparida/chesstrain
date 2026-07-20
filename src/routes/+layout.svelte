@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { appPath, routePath } from '$lib/paths';
   import { page } from '$app/state';
   import { authStore, lockLocalAccount } from '../stores/auth';
   import { switchSessionOwner } from '../stores/session';
@@ -16,7 +17,7 @@
   let mistakeSync = $derived($mistakeSyncStore);
 
   $effect(() => {
-    const path = page.url.pathname;
+    const path = routePath(page.url.pathname);
     const auth = $authStore;
     if (auth.authenticated) {
       switchProfileOwner(auth.username);
@@ -25,14 +26,14 @@
     onboardingOpen = auth.authenticated && !auth.guest && $profileStore.onboardingCompletedAt === null;
     if (!authenticated && path !== '/login') {
       const returnTo = `${page.url.pathname}${page.url.search}${page.url.hash}`;
-      void goto(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      void goto(`${appPath('/login')}?returnTo=${encodeURIComponent(returnTo)}`);
     }
     if (authenticated && path === '/login') {
       const requested = page.url.searchParams.get('returnTo');
       const destination = requested && requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/login')
         ? requested
         : '/';
-      void goto(destination);
+      void goto(appPath(destination));
     }
   });
 
@@ -67,18 +68,19 @@
 
   async function logOut() {
     lockLocalAccount();
-    await goto('/login');
+    await goto(appPath('/login'));
   }
 
   async function finishOnboarding(destination: string) {
     updateProfile({ onboardingCompletedAt: Date.now() });
     onboardingOpen = false;
-    await goto(destination);
+    await goto(appPath(destination));
   }
 
   function isActive(href: string) {
-    if (href === '/') return page.url.pathname === '/';
-    return page.url.pathname.startsWith(href);
+    const path = routePath(page.url.pathname);
+    if (href === '/') return path === '/';
+    return path.startsWith(href);
   }
 </script>
 
@@ -86,7 +88,7 @@
   {#if authenticated}
     <header class="topbar">
       <div class="topbar-row">
-        <a class="brand" href="/">
+        <a class="brand" href={appPath('/')}>
           <div class="logo-icon">N</div>
           <div>
             <div class="logo-title">MAGNUS ENGINE</div>
@@ -106,7 +108,7 @@
               <span>Profile</span>
             </summary>
             <div class="profile-menu-panel">
-              <a href="/profile">Profile settings</a>
+              <a href={appPath('/profile')}>Profile settings</a>
               <button onclick={toggleTheme}>{light ? 'Use dark mode' : 'Use light mode'}</button>
               <button onclick={logOut}>Log out</button>
             </div>
@@ -115,14 +117,14 @@
       </div>
 
       <nav class="nav-links" aria-label="Primary">
-        <a class="nav-link" class:active={isActive('/')} href="/">Today</a>
-        <a class="nav-link" class:active={isActive('/train')} href="/train">Train</a>
-        <a class="nav-link" class:active={isActive('/dictionary')} href="/dictionary">Dictionary</a>
+        <a class="nav-link" class:active={isActive('/')} href={appPath('/')}>Today</a>
+        <a class="nav-link" class:active={isActive('/train')} href={appPath('/train')}>Train</a>
+        <a class="nav-link" class:active={isActive('/dictionary')} href={appPath('/dictionary')}>Dictionary</a>
       </nav>
     </header>
   {:else}
     <header class="login-topbar">
-      <a class="brand" href="/">
+      <a class="brand" href={appPath('/')}>
         <div class="logo-icon">N</div>
         <div>
           <div class="logo-title">MAGNUS ENGINE</div>
@@ -136,7 +138,7 @@
   {/if}
 
   <main class="main-content">
-    {#if authenticated || page.url.pathname === '/login'}
+    {#if authenticated || routePath(page.url.pathname) === '/login'}
       {@render children()}
     {/if}
   </main>

@@ -1,4 +1,5 @@
 import type { TrainingExercise, TrainingModuleId } from '$lib/learning/training';
+import { appPath } from '$lib/paths';
 
 export interface TrainingModulePresentation {
 	module: TrainingModuleId;
@@ -13,56 +14,56 @@ export const TRAINING_MODULES: readonly TrainingModulePresentation[] = [
 		module: 'board-grip',
 		name: 'Board Vision',
 		description: 'Name squares, find attackers, and spot loose pieces.',
-		href: '/train/squares',
+		href: appPath('/train/squares'),
 		icon: '♙'
 	},
 	{
 		module: 'tactics',
 		name: 'Tactics',
 		description: 'Recognize forcing patterns and tactical threats.',
-		href: '/train/tactics',
+		href: appPath('/train/tactics'),
 		icon: '⚔'
 	},
 	{
 		module: 'calculation',
 		name: 'Calculation',
 		description: 'Calculate a complete line without moving the pieces.',
-		href: '/train/calculation',
+		href: appPath('/train/calculation'),
 		icon: '◎'
 	},
 	{
 		module: 'positional',
 		name: 'Positional',
 		description: 'Evaluate positions and rank candidate plans.',
-		href: '/train/positional',
+		href: appPath('/train/positional'),
 		icon: '♗'
 	},
 	{
 		module: 'decision',
 		name: 'Decision',
 		description: 'Use a repeatable checklist before committing to a move.',
-		href: '/train/decision',
+		href: appPath('/train/decision'),
 		icon: '✓'
 	},
 	{
 		module: 'openings',
 		name: 'Openings',
 		description: 'Practice your repertoire and respond to deviations.',
-		href: '/train/opening',
+		href: appPath('/train/opening'),
 		icon: '♜'
 	},
 	{
 		module: 'endgame',
 		name: 'Endgame',
 		description: 'Practice endgame technique against Stockfish.',
-		href: '/train/endgame',
+		href: appPath('/train/endgame'),
 		icon: '♔'
 	},
 	{
 		module: 'mistakes',
 		name: 'My Mistakes',
 		description: 'Turn your own game errors into focused puzzles.',
-		href: '/train/mistakes',
+		href: appPath('/train/mistakes'),
 		icon: '↺'
 	}
 ];
