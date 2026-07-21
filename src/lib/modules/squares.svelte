@@ -17,10 +17,11 @@
   function randomRotation(kind: BoardGripRound['kind']): BoardRotation {
     if (kind !== 'name-square') return 0;
     const roll = Math.random();
-    return roll < 0.12 ? 90 : roll < 0.24 ? 270 : 0;
+    return roll < 1 / 3 ? 90 : roll < 2 / 3 ? 270 : 0;
   }
 
-  let round = $state<BoardGripRound>(nextBoardGripRound());
+  const initialRound = nextBoardGripRound();
+  let round = $state<BoardGripRound>(initialRound);
   let attempts = $state(0);
   let correct = $state(0);
   let streak = $state(0);
@@ -29,7 +30,7 @@
   let startedAt = Date.now();
   let feedback = $state('');
   let orientation = $state<GripOrientation>(randomOrientation());
-  let rotation = $state<BoardRotation>(0);
+  let rotation = $state<BoardRotation>(randomRotation(initialRound.kind));
   let selected = $state<Set<string>>(new Set());
   let roundComplete = $state(false);
 
