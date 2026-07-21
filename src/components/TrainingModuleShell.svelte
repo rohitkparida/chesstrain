@@ -11,6 +11,7 @@
     taskKeywords = [],
     resetLabel = 'Reset',
     onReset,
+    onSkip,
     exposure = 'new',
     source = 'curated',
     reason,
@@ -22,12 +23,23 @@
     taskKeywords?: string[];
     resetLabel?: string;
     onReset?: () => void;
+    onSkip?: () => void;
     exposure?: 'new' | `review-${number}`;
     source?: 'curated' | 'lichess' | 'personal-game' | 'repertoire' | 'generated' | 'tablebase';
     reason?: string;
     verification?: 'curated' | 'stockfish' | 'tablebase';
     children: Snippet;
   }>();
+  let skipRequested = $state(false);
+
+  function requestSkip() {
+    if (skipRequested) {
+      skipRequested = false;
+      onSkip?.();
+      return;
+    }
+    skipRequested = true;
+  }
 </script>
 
 <main class="module-container" data-workflow="task-commit-feedback-continue">
@@ -38,9 +50,18 @@
   <TaskMetadata {exposure} {source} {reason} {verification} />
   <div class="module-header">
     <h2><GlossaryText text={title} /></h2>
-    {#if onReset}
-      <ActionButton variant="quiet" onclick={onReset}>{resetLabel}</ActionButton>
-    {/if}
+    <div class="header-actions">
+      {#if onSkip}
+        {#if skipRequested}
+          <span class="skip-confirm">Skip?</span>
+          <button class="skip-cancel" type="button" onclick={() => skipRequested = false}>Keep</button>
+          <button class="skip-yes" type="button" onclick={requestSkip}>Skip</button>
+        {:else}
+          <button class="skip-button" type="button" onclick={requestSkip}>Skip</button>
+        {/if}
+      {/if}
+      {#if onReset}<ActionButton variant="quiet" onclick={onReset}>{resetLabel}</ActionButton>{/if}
+    </div>
   </div>
   <div class="module-content">
     {@render children()}
@@ -62,6 +83,11 @@
     justify-content: space-between;
     align-items: center;
   }
+  .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.45rem; }
+  .skip-button, .skip-cancel, .skip-yes { padding: 0.45rem 0.65rem; border: 1px solid var(--border-sub); border-radius: 6px; background: transparent; color: var(--text-4); font: inherit; font-size: 0.76rem; cursor: pointer; }
+  .skip-button:hover, .skip-cancel:hover { color: var(--text-2); border-color: var(--accent-border); }
+  .skip-yes { color: var(--accent); border-color: var(--accent-border); }
+  .skip-confirm { color: var(--text-4); font-size: 0.76rem; }
   .module-content {
     display: flex;
     flex-direction: column;

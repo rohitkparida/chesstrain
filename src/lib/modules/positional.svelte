@@ -76,6 +76,7 @@
   title="Understanding the Position"
   task="Evaluate the position and rank the plans."
   taskKeywords={['Evaluate', 'rank the plans']}
+  onSkip={() => { rubric = null; feedback = ''; step = 1; startedAt = Date.now(); }}
 >
   
   <div class="board-layout">

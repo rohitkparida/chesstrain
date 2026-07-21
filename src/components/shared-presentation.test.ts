@@ -9,11 +9,13 @@ describe('shared training presentation', () => {
 
   it('exposes the task-to-feedback workflow and keeps reset secondary', async () => {
     const onReset = vi.fn();
+    const onSkip = vi.fn();
     render(TrainingModuleShell, {
       title: 'Calculation',
       task: 'Enter the line, then commit it.',
       taskKeywords: ['Enter the line'],
       onReset,
+      onSkip,
       children: createRawSnippet(() => ({ render: () => '<span>Practice content</span>' }))
     });
 
@@ -25,6 +27,10 @@ describe('shared training presentation', () => {
     expect(reset).toHaveClass('quiet');
     await fireEvent.click(reset);
     expect(onReset).toHaveBeenCalledOnce();
+    await fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(screen.getByText('Skip?')).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(onSkip).toHaveBeenCalledOnce();
   });
 
   it('renders the task as a labeled section without a nested card', () => {

@@ -64,6 +64,7 @@
   taskKeywords={['Recall', 'commit']}
   resetLabel="Restart opening line"
   onReset={reset}
+  onSkip={reset}
 >
   
   <div class="board-layout">

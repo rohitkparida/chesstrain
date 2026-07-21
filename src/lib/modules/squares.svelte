@@ -122,9 +122,14 @@
     advanceRound();
     feedback = '';
   }
+
+  function skipRound() {
+    advanceRound();
+    feedback = '';
+  }
 </script>
 
-<TrainingModuleShell title="Board Vision" task={round.prompt} taskKeywords={promptKeywords} onReset={reset}>
+<TrainingModuleShell title="Board Vision" task={round.prompt} taskKeywords={promptKeywords} onReset={reset} onSkip={skipRound}>
   <div class="prompt" aria-live="polite">
     <span>{round.label}</span>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
@@ -187,7 +192,7 @@
   .drill-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
   .drill-actions .ghost { color: var(--text-4); }
   .locked { pointer-events: none; opacity: 0.72; }
-  .continue { align-self: center; padding: 0.55rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: var(--bg); cursor: pointer; font-weight: 700; }
+  .continue { position: sticky; bottom: 0.75rem; z-index: 3; align-self: center; padding: 0.55rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: var(--bg); cursor: pointer; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
   .feedback { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--border); color: var(--text-3); }
   @media (max-width: 640px) { .prompt > button { margin-left: 0; } }
 </style>

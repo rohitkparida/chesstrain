@@ -104,6 +104,7 @@
   task="Enter the line, then check it."
   taskKeywords={['Enter the line', 'check']}
   onReset={reset}
+  onSkip={reset}
 >
   <details class="mode-actions">
     <summary>Try blindfold mode</summary>
