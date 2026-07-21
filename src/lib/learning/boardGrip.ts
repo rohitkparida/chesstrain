@@ -162,7 +162,7 @@ export function makeBoardGripRound(
 		return {
 			kind,
 			label: 'Square control',
-			prompt: 'Select every piece controlling the marked empty square. Defenders count.',
+			prompt: 'Select all pieces controlling the marked square.',
 			fen,
 			targetSquare,
 			answers: attackerSquaresFromFen(fen, targetSquare)
@@ -174,7 +174,7 @@ export function makeBoardGripRound(
 		return {
 			kind,
 			label: `Loose ${COLOR_NAME[color]} pieces`,
-			prompt: `Select every undefended ${COLOR_NAME[color].toLowerCase()} piece or pawn.`,
+			prompt: `Select all undefended ${COLOR_NAME[color].toLowerCase()} pieces and pawns.`,
 			fen,
 			answers: loosePieceSquaresFromFen(fen, color)
 		};
@@ -183,7 +183,7 @@ export function makeBoardGripRound(
 	return {
 		kind,
 		label: 'Pinned pieces',
-		prompt: 'Select every piece pinned to a king or queen.',
+		prompt: 'Select all pieces pinned to a king or queen.',
 		fen,
 		answers: pinnedPieceSquaresFromFen(fen)
 	};

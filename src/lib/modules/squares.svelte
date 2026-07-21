@@ -25,6 +25,12 @@
   let roundComplete = $state(false);
 
   let pieces = $derived(piecesFromFen(round.fen));
+  let promptKeywords = $derived(
+    round.kind === 'name-square' ? [round.targetSquare ?? '']
+      : round.kind === 'attackers' ? ['controlling', 'marked square']
+      : round.kind === 'loose-pieces' ? ['undefended']
+      : ['pinned']
+  );
 
   function sameSquares(candidate: Set<string>) {
     return candidate.size === round.answers.length && round.answers.every((square) => candidate.has(square));
@@ -118,10 +124,9 @@
   }
 </script>
 
-<TrainingModuleShell title="Board Vision" task="Solve the current board-vision drill." onReset={reset}>
+<TrainingModuleShell title="Board Vision" task={round.prompt} taskKeywords={promptKeywords} onReset={reset}>
   <div class="prompt" aria-live="polite">
     <span>{round.label}</span>
-    <strong>{round.prompt}</strong>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
     <button onclick={() => orientation = orientation === 'black' ? 'white' : 'black'}>
       {orientation === 'black' ? 'White view' : 'Black view'}
@@ -171,14 +176,11 @@
 </TrainingModuleShell>
 
 <style>
-  .prompt { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'label task' 'mode action'; align-items: center; gap: 0.55rem 0.8rem; }
+  .prompt { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .prompt > span:first-child { grid-area: label; }
-  .prompt > strong { grid-area: task; min-width: 0; }
-  .prompt .mode { grid-area: mode; }
-  .prompt > button { grid-area: action; justify-self: start; }
+  .prompt > button { margin-left: auto; }
   .prompt span { color: var(--text-4); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; }
   .prompt .mode { color: var(--text-3); font-size: 0.7rem; white-space: nowrap; }
-  .prompt strong { color: var(--accent); font-size: clamp(1.1rem, 2.6vw, 1.55rem); line-height: 1.25; }
   .prompt button, .drill-actions button { padding: 0.45rem 0.7rem; background: transparent; border: 1px solid var(--border-sub); border-radius: 6px; color: var(--text-3); cursor: pointer; }
   .prompt button:hover, .drill-actions button:hover { border-color: var(--accent-border); color: var(--accent); }
   .drill-actions { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
@@ -187,5 +189,5 @@
   .locked { pointer-events: none; opacity: 0.72; }
   .continue { align-self: center; padding: 0.55rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: var(--bg); cursor: pointer; font-weight: 700; }
   .feedback { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--border); color: var(--text-3); }
-  @media (max-width: 640px) { .prompt { grid-template-columns: 1fr; grid-template-areas: 'label' 'task' 'mode' 'action'; } .prompt button { width: fit-content; } }
+  @media (max-width: 640px) { .prompt > button { margin-left: 0; } }
 </style>

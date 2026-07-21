@@ -12,12 +12,14 @@ describe('shared training presentation', () => {
     render(TrainingModuleShell, {
       title: 'Calculation',
       task: 'Enter the line, then commit it.',
+      taskKeywords: ['Enter the line'],
       onReset,
       children: createRawSnippet(() => ({ render: () => '<span>Practice content</span>' }))
     });
 
     expect(screen.getByRole('main')).toHaveAttribute('data-workflow', 'task-commit-feedback-continue');
     expect(screen.getByRole('heading', { name: 'Calculation' })).toBeInTheDocument();
+    expect(screen.getByRole('main').querySelector('.task-line strong')).toHaveTextContent('Enter the line');
     expect(screen.getByText('Practice content')).toBeInTheDocument();
     const reset = screen.getByRole('button', { name: 'Reset' });
     expect(reset).toHaveClass('quiet');
@@ -27,7 +29,7 @@ describe('shared training presentation', () => {
 
   it('renders the task as a labeled section without a nested card', () => {
     render(InstructionBanner, { hint: 'Choose your move before checking.' });
-    const task = screen.getByRole('region', { name: 'YOUR TASK' });
+    const task = screen.getByRole('region', { name: 'Task' });
     expect(task).toHaveTextContent('Choose your move before checking.');
     expect(task.querySelector('.instruction-banner')).toBeNull();
   });

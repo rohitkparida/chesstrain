@@ -3,10 +3,12 @@
   import ActionButton from './ActionButton.svelte';
   import TaskMetadata from './TaskMetadata.svelte';
   import GlossaryText from './GlossaryText.svelte';
+  import HighlightedInstruction from './HighlightedInstruction.svelte';
 
   let {
     title,
     task,
+    taskKeywords = [],
     resetLabel = 'Reset',
     onReset,
     exposure = 'new',
@@ -17,6 +19,7 @@
   } = $props<{
     title: string;
     task: string;
+    taskKeywords?: string[];
     resetLabel?: string;
     onReset?: () => void;
     exposure?: 'new' | `review-${number}`;
@@ -30,7 +33,7 @@
 <main class="module-container" data-workflow="task-commit-feedback-continue">
   <div class="task-line">
     <span class="task-label">Task</span>
-    <span><GlossaryText text={task} /></span>
+    <HighlightedInstruction text={task} keywords={taskKeywords} />
   </div>
   <TaskMetadata {exposure} {source} {reason} {verification} />
   <div class="module-header">
@@ -52,8 +55,8 @@
     max-width: 600px;
     margin: 0 auto;
   }
-  .task-line { display: flex; align-items: baseline; gap: 0.6rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--accent-border); color: var(--text-4); font-size: 0.84rem; line-height: 1.45; }
-  .task-label { flex: 0 0 auto; color: var(--text-1); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; }
+  .task-line { display: flex; align-items: baseline; gap: 0.6rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--border); color: var(--text-4); font-size: 0.84rem; line-height: 1.4; }
+  .task-label { flex: 0 0 auto; color: var(--text-4); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .module-header {
     display: flex;
     justify-content: space-between;

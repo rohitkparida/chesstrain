@@ -226,7 +226,8 @@
   <div class="board-col">
     <InstructionBanner
       title="Find the best move for {activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White'}."
-      hint="Click a piece, then its destination square. Legal-move hints stay hidden during the attempt."
+      keywords={['best move', activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White']}
+      hint="Select a piece, then a square."
     />
 
     {#if activePuzzle}

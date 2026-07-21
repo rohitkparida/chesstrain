@@ -75,6 +75,7 @@
 <TrainingModuleShell
   title="Understanding the Position"
   task="Evaluate the position and rank the plans."
+  taskKeywords={['Evaluate', 'rank the plans']}
 >
   
   <div class="board-layout">

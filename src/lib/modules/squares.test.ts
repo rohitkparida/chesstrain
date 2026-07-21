@@ -16,7 +16,7 @@ describe('board grip game', () => {
     const initial = flip.textContent;
     await fireEvent.click(flip);
     expect(flip.textContent).not.toBe(initial);
-    expect(screen.getByText(/One-tap answer|Select every/)).toBeInTheDocument();
+    expect(screen.getByText(/One-tap answer|Multi-select answer/)).toBeInTheDocument();
   });
 
   it.each([

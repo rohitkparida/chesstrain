@@ -155,7 +155,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   onDestroy(() => { if (analyzing) persistMistakes(); engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="My Mistakes" task="Turn your mistakes into puzzles." source="personal-game" onReset={reset}>
+<TrainingModuleShell title="My Mistakes" task="Turn your mistakes into puzzles." taskKeywords={['mistakes', 'puzzles']} source="personal-game" onReset={reset}>
   {#if mistakes.length === 0 && !analyzing}
     <div class="import-panel">
       <label for="username">Chess.com name</label>

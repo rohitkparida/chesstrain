@@ -1,40 +1,34 @@
 <script lang="ts">
-  import GlossaryText from './GlossaryText.svelte';
-  let { title = 'YOUR TASK', hint } = $props<{
+  import HighlightedInstruction from './HighlightedInstruction.svelte';
+  let { title = 'Task', hint, keywords = [] } = $props<{
     title?: string;
-    hint: string;
+    hint?: string;
+    keywords?: string[];
   }>();
 </script>
 
 <section class="instruction-banner" aria-labelledby="task-title">
-  <span class="banner-icon">&#127919;</span>
-  <div>
-    <strong id="task-title"><GlossaryText text={title} /></strong>
-    <span><GlossaryText text={hint} /></span>
+  <span class="task-label" id="task-title">Task</span>
+  <div class="copy">
+    <HighlightedInstruction text={title} {keywords} />
+    {#if hint}<span class="hint">{hint}</span>{/if}
   </div>
 </section>
 
 <style>
   .instruction-banner {
     display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.15rem 0 0.8rem;
-    border-bottom: 1px solid var(--accent-border);
-    color: var(--text-3);
-    font-size: 0.88rem;
-  }
-  .banner-icon { flex-shrink: 0; font-size: 1.05rem; }
-  strong {
-    display: block;
-    margin-bottom: 0.25rem;
-    color: var(--text-1);
-    font-size: 0.78rem;
-    letter-spacing: 1px;
-  }
-  span:last-child {
-    color: var(--text-4);
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0 0 0.55rem;
+    border-bottom: 1px solid var(--border);
     font-size: 0.84rem;
-    line-height: 1.5;
+  }
+  .task-label { flex: 0 0 auto; color: var(--text-4); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .copy { display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; }
+  .hint {
+    color: var(--text-4);
+    font-size: 0.78rem;
+    line-height: 1.4;
   }
 </style>

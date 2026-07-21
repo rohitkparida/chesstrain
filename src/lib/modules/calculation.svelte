@@ -102,6 +102,7 @@
 <TrainingModuleShell
   title="Calculate the line"
   task="Enter the line, then check it."
+  taskKeywords={['Enter the line', 'check']}
   onReset={reset}
 >
   <details class="mode-actions">

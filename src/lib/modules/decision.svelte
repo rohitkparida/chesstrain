@@ -107,7 +107,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Choosing a Move" task={scenario.prompt} onReset={reset}>
+<TrainingModuleShell title="Choosing a Move" task={scenario.prompt} taskKeywords={['changed', 'forcing replies', 'practical candidates']} onReset={reset}>
   <p class="scenario-meta">Position after {scenario.opponentMove}</p>
 
   <ChessBoard
