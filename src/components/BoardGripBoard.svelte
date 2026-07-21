@@ -39,15 +39,14 @@
 
 <div class="square-board" aria-label="Coordinate training board">
   {#each displaySquares as square}
-    {@const visualSquare = rotateSquare(orientSquare(square, viewFlipped), rotation)}
     {@const piece = pieces[square]}
     <button
-      class:dark={isDarkSquare(visualSquare)}
-      class:light={!isDarkSquare(visualSquare)}
+      class:dark={isDarkSquare(square)}
+      class:light={!isDarkSquare(square)}
       class:selected={selected.has(square)}
       class:marked={markedSquare === square}
       class:correct={correctSquares.includes(square)}
-      aria-label={`Square ${visualSquare}`}
+      aria-label={`Square ${square}`}
       aria-describedby={`grip-square-description-${square}`}
       aria-pressed={selected.has(square)}
       onclick={() => onChoose(square)}
@@ -57,7 +56,7 @@
           {pieceGlyph(`${piece.color}${piece.type.toUpperCase()}`)}
         </span>
       {/if}
-      <span class="sr-only" id={`grip-square-description-${square}`}>{`${isDarkSquare(visualSquare) ? 'Dark' : 'Light'} square${piece ? `, ${piece.color === 'w' ? 'White' : 'Black'} ${piece.type}` : ''}${selected.has(square) ? ', selected' : ''}`}</span>
+      <span class="sr-only" id={`grip-square-description-${square}`}>{`${isDarkSquare(square) ? 'Dark' : 'Light'} square${piece ? `, ${piece.color === 'w' ? 'White' : 'Black'} ${piece.type}` : ''}${selected.has(square) ? ', selected' : ''}`}</span>
     </button>
   {/each}
 </div>

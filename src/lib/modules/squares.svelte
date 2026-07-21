@@ -6,7 +6,7 @@
   import { accuracyPercent } from '../learning/objectiveScoring';
   import { recordTrainingAttempt } from '../../stores/session';
   import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
-  import { orientSquare, rotateSquare, type BoardRotation } from '../chess/board';
+  import type { BoardRotation } from '../chess/board';
 
   type GripOrientation = 'white' | 'black';
 
@@ -118,14 +118,6 @@
     feedback = '';
   }
 
-  function visibleSquare(square: string): string {
-    return rotateSquare(orientSquare(square, orientation === 'black'), rotation);
-  }
-
-  let displayedPrompt = $derived(round.kind === 'name-square' && round.targetSquare
-    ? `Find ${visibleSquare(round.targetSquare)}`
-    : round.prompt);
-
   function continueAfterWrong() {
     if (!roundComplete) return;
     advanceRound();
@@ -136,7 +128,7 @@
 <TrainingModuleShell title="Board Vision" task="Solve the current board-vision drill." onReset={reset}>
   <div class="prompt" aria-live="polite">
     <span>{round.label}</span>
-    <strong>{displayedPrompt}</strong>
+    <strong>{round.prompt}</strong>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
     <button onclick={() => orientation = orientation === 'black' ? 'white' : 'black'}>
       {orientation === 'black' ? 'White view' : 'Black view'}

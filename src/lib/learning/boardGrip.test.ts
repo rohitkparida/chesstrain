@@ -29,6 +29,13 @@ describe('board grip helpers', () => {
 		expect(round.answers).toEqual([]);
 	});
 
+	it('uses the same canonical square in the name-square prompt and answer', () => {
+		const round = makeBoardGripRound('name-square', new Chess().fen(), () => 0.5);
+
+		expect(round.prompt).toBe(`Find ${round.targetSquare}`);
+		expect(round.answers).toEqual([round.targetSquare]);
+	});
+
 	it('finds loose non-king pieces without including kings', () => {
 		const loose = loosePieceSquaresFromFen(new Chess().fen());
 
