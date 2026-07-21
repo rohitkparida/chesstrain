@@ -93,7 +93,11 @@ export class MistakeSyncCoordinator {
 					await this.repository.putJob(job);
 					const quickAnalysis = await quickAnalyzeCandidate(this.engine, game, candidates[plyIndex], signal);
 					const provisional = quickAnalysis ? exerciseFromAnalysis(quickAnalysis, 'provisional') : null;
-					if (provisional) { found.push(provisional); await this.repository.putMistakes(this.userId, [provisional]); }
+					if (provisional) {
+						found.push(provisional);
+						await this.repository.putMistakes(this.userId, [provisional]);
+						this.update({ mistakesFound: existingMistakes.length + found.length });
+					}
 					if (quickAnalysis) {
 						job.pass = 'verify'; job.updatedAt = Date.now(); await this.repository.putJob(job);
 						const verified = await verifyCandidate(this.engine, quickAnalysis, signal);
