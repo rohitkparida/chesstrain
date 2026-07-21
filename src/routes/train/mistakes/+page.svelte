@@ -24,6 +24,8 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   let reviewFinished = $state(false); let activeAttempted = $state(false);
   let showImportOptions = $state(false);
   let replay = $state<{ fen: string; move: string; label: string }[]>([]); let replayStep = $state(0); let replayReady = $state(false);
+  let analysisIndex = $state(0);
+  let syncState = $state(get(mistakeSyncStore));
   let analysisGeneration = 0;
   let syncUnsubscribe: (() => void) | null = null;
   let backgroundCoordinator: MistakeSyncCoordinator | null = null;
@@ -58,7 +60,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   function analyzeGame() {
     try { candidates = extractGameMoves(pgn, color, username.trim() || undefined); } catch { status = 'That PGN could not be read. Check the pasted game.'; return; }
     if (!candidates.length) { status = 'No moves found for that side.'; return; }
-    mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisGeneration++;
+    mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisIndex = 0; analysisGeneration++;
     status = `Analyzing move 1 of ${candidates.length}...`;
     engine?.terminate(); engine = new StockfishEngine(); void analyzeNext(0, analysisGeneration);
   }
@@ -77,6 +79,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       const loss = beforePerspective - afterPerspective;
       if (loss >= 80 && before.bestMove) mistakes = [...mistakes, { ...candidate, bestMove: before.bestMove, loss }];
       persistMistakes();
+      analysisIndex = index + 1;
       void analyzeNext(index + 1, generation);
     } catch {
       if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; }
@@ -143,6 +146,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     if (cached) { username = cached.username; mistakes = cached.mistakes; status = `Loaded ${mistakes.length} saved mistake${mistakes.length === 1 ? '' : 's'}.`; }
     else username = get(profileStore).chessComUsername;
     syncUnsubscribe = mistakeSyncStore.subscribe((state) => {
+      syncState = state;
       if (state.status === 'syncing' || state.status === 'analyzing') analyzing = true;
       if (state.status === 'complete') { analyzing = false; backgroundCoordinator = null; void loadBackgroundMistakes(); }
       if (state.status === 'paused' || state.status === 'error') { analyzing = false; backgroundCoordinator = null; }
@@ -169,7 +173,18 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     </div>
   {/if}
   <p class="status" role="status">{status}</p>
-  {#if analyzing}<div class="analysis-progress"><p class="status">Analyzing games...</p><button class="quiet" onclick={cancelAnalysis}>Pause</button></div>{/if}
+  {#if analyzing}
+    {@const usingPgn = candidates.length > 0}
+    {@const progressTotal = usingPgn ? candidates.length : syncState.gamesFound}
+    {@const progressValue = usingPgn ? analysisIndex : syncState.gamesAnalyzed}
+    <div class="analysis-progress" role="status" aria-live="polite">
+      <div class="progress-copy">
+        <p class="status">{usingPgn ? status : syncState.gamesFound > 0 ? `Analyzing game ${Math.min(progressValue + 1, progressTotal)} of ${progressTotal}...` : 'Finding and analyzing games...'}</p>
+        {#if progressTotal > 0}<progress max={progressTotal} value={Math.min(progressValue, progressTotal)} aria-label="Mistake analysis progress"></progress><small>{Math.min(progressValue, progressTotal)} / {progressTotal} games</small>{:else}<span class="progress-indeterminate" aria-label="Analysis in progress"></span>{/if}
+      </div>
+      <button class="quiet" onclick={cancelAnalysis}>Pause</button>
+    </div>
+  {/if}
   {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<button class="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</button>{/if}
   {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><button class="primary" onclick={reviewAgain}>Review again</button><button class="quiet" onclick={analyzeNewerGames}>Analyze newer games</button></div></div>{/if}
   {#if replayReady && mistakes[active]}
@@ -178,5 +193,5 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
 </TrainingModuleShell>
 
 <style>
-  .import-panel { display: grid; gap: 0.75rem; } label { color: var(--text-2); font-weight: 700; } input, textarea { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem; font: inherit; } textarea { min-height: 180px; resize: vertical; } .row, .puzzle-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; } select { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); padding: 0.5rem; border-radius: 6px; } .primary, .quiet { border-radius: 6px; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; } .primary { background: var(--accent); color: var(--bg); border: 0; } .quiet { background: transparent; color: var(--accent); border: 1px solid var(--accent-border); } .secondary-link { width: fit-content; border: 0; background: transparent; color: var(--accent); padding: 0; font: inherit; font-size: 0.82rem; cursor: pointer; } .primary:disabled { opacity: 0.5; cursor: not-allowed; } .status, .feedback { color: var(--text-3); } .feedback { border-top: 1px solid var(--border); padding-top: 0.75rem; } .analysis-progress { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; } .detected { color: var(--text-3); } .review-complete { display: grid; gap: 0.75rem; }
+  .import-panel { display: grid; gap: 0.75rem; } label { color: var(--text-2); font-weight: 700; } input, textarea { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem; font: inherit; } textarea { min-height: 180px; resize: vertical; } .row, .puzzle-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; } select { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); padding: 0.5rem; border-radius: 6px; } .primary, .quiet { border-radius: 6px; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; } .primary { background: var(--accent); color: var(--bg); border: 0; } .quiet { background: transparent; color: var(--accent); border: 1px solid var(--accent-border); } .secondary-link { width: fit-content; border: 0; background: transparent; color: var(--accent); padding: 0; font: inherit; font-size: 0.82rem; cursor: pointer; } .primary:disabled { opacity: 0.5; cursor: not-allowed; } .status, .feedback { color: var(--text-3); } .feedback { border-top: 1px solid var(--border); padding-top: 0.75rem; } .analysis-progress { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 0.75rem; } .progress-copy { display: grid; gap: 0.35rem; min-width: min(100%, 260px); } .progress-copy p { margin: 0; } progress { width: min(100%, 360px); height: 0.5rem; accent-color: var(--accent); } .progress-copy small { color: var(--text-5); font-size: 0.74rem; } .progress-indeterminate { display: block; width: min(100%, 360px); height: 0.5rem; overflow: hidden; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-dim)); background-size: 200% 100%; animation: progress-shimmer 1.4s linear infinite; } .detected { color: var(--text-3); } .review-complete { display: grid; gap: 0.75rem; } @keyframes progress-shimmer { to { background-position: -200% 0; } }
 </style>
