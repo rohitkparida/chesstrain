@@ -68,7 +68,7 @@ export interface MistakeAnalysisJob {
 	error: string | null;
 }
 
-export type MistakeKind = 'evaluation-loss' | 'missed-mate' | 'allowed-mate';
+export type MistakeKind = 'evaluation-loss' | 'missed-mate' | 'allowed-mate' | 'sacrifice-idea';
 
 export interface PersonalMistakeExercise {
 	id: string;
@@ -82,6 +82,7 @@ export interface PersonalMistakeExercise {
 	bestSan: string;
 	lossCp: number;
 	kind: MistakeKind;
+	verificationStatus: 'provisional' | 'verified' | 'discarded';
 	principalVariation: string[];
 	engineVersion: string;
 	analyzedAt: number;

@@ -1,5 +1,5 @@
 import { StockfishEngine, StockfishCancellationError, StockfishEngineTerminatedError } from '$lib/chess/engine';
-import { analyzeCandidate, candidatesForGame, exerciseFromAnalysis } from '$lib/learning/mistakeAnalysis';
+import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, verifyCandidate } from '$lib/learning/mistakeAnalysis';
 import { ChessComApiError, createChessComClient, fetchLatestEligibleGames, fetchNewEligibleGames } from './client';
 import { createIndexedDbMistakeRepository } from './repository';
 import type { ChessComClient } from './types';
@@ -91,14 +91,21 @@ export class MistakeSyncCoordinator {
 				for (let plyIndex = firstPly; plyIndex < candidates.length; plyIndex += 1) {
 					job.gameIndex = gameIndex; job.plyIndex = plyIndex; job.updatedAt = Date.now();
 					await this.repository.putJob(job);
-					const analysis = await analyzeCandidate(this.engine, game, candidates[plyIndex], signal);
-					const exercise = analysis ? exerciseFromAnalysis(analysis) : null;
-					if (exercise) { found.push(exercise); await this.repository.putMistakes(this.userId, [exercise]); }
+					const quickAnalysis = await quickAnalyzeCandidate(this.engine, game, candidates[plyIndex], signal);
+					const provisional = quickAnalysis ? exerciseFromAnalysis(quickAnalysis, 'provisional') : null;
+					if (provisional) { found.push(provisional); await this.repository.putMistakes(this.userId, [provisional]); }
+					if (quickAnalysis) {
+						job.pass = 'verify'; job.updatedAt = Date.now(); await this.repository.putJob(job);
+						const verified = await verifyCandidate(this.engine, quickAnalysis, signal);
+						const verifiedExercise = exerciseFromAnalysis(verified, 'verified');
+						if (verifiedExercise) await this.repository.putMistakes(this.userId, [verifiedExercise]);
+						else if (provisional) await this.repository.putMistakes(this.userId, [{ ...provisional, verificationStatus: 'discarded' }]);
+						job.pass = 'quick';
+					}
 				}
 				job.gamesAnalyzed = gameIndex + 1; job.updatedAt = Date.now();
 				this.update({ gamesAnalyzed: job.gamesAnalyzed, mistakesFound: existingMistakes.length + found.length });
 			}
-			await this.repository.putMistakes(this.userId, found);
 			job.status = 'complete'; job.updatedAt = Date.now(); job.mistakesFound = existingMistakes.length + found.length;
 			await this.repository.putJob(job);
 			connection.lastSyncAt = Date.now();

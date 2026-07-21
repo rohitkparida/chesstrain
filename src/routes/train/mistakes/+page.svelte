@@ -32,6 +32,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   const mistakeRepository = createIndexedDbMistakeRepository();
 
   function savedMistakeToReview(exercise: PersonalMistakeExercise): Mistake | null {
+    if (exercise.verificationStatus === 'discarded') return null;
     const board = new Chess(exercise.fen);
     const played = board.move({ from: exercise.playedMove.slice(0, 2), to: exercise.playedMove.slice(2, 4), promotion: exercise.playedMove[4] as 'q' | 'r' | 'b' | 'n' | undefined });
     if (!played) return null;
@@ -148,6 +149,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     syncUnsubscribe = mistakeSyncStore.subscribe((state) => {
       syncState = state;
       if (state.status === 'syncing' || state.status === 'analyzing') analyzing = true;
+      if (state.status === 'analyzing' && state.mistakesFound > mistakes.length) void loadBackgroundMistakes();
       if (state.status === 'complete') { analyzing = false; backgroundCoordinator = null; void loadBackgroundMistakes(); }
       if (state.status === 'paused' || state.status === 'error') { analyzing = false; backgroundCoordinator = null; }
       if (state.error) status = state.error;
