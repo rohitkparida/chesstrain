@@ -188,7 +188,7 @@
   :global(a) { color: var(--accent); }
   :global(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .app-layout { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; overflow: hidden; }
-  .topbar, .login-topbar { background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 0.85rem 1rem; }
+  .topbar, .login-topbar { min-width: 0; background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 0.85rem 1rem; }
   .topbar { display: grid; gap: 0.8rem; }
   .topbar-row, .login-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   .brand { display: flex; align-items: center; gap: 0.6rem; color: inherit; text-decoration: none; }
@@ -213,7 +213,7 @@
   .profile-menu-panel a:hover, .profile-menu-panel button:hover { background: var(--accent-dim); color: var(--accent); }
   .theme-btn { padding: 0.2rem 0.5rem; border: 1px solid var(--border-sub); border-radius: 6px; background: none; color: var(--text-3); cursor: pointer; font-size: 0.75rem; }
   .theme-btn:hover { color: var(--accent); }
-  .main-content { display: flex; flex-direction: column; overflow-y: auto; padding: 1.25rem 1.5rem 1.5rem; background: var(--bg); }
+  .main-content { display: flex; min-width: 0; flex-direction: column; overflow-x: hidden; overflow-y: auto; padding: 1.25rem 1.5rem 1.5rem; background: var(--bg); }
   .onboarding-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: color-mix(in srgb, var(--bg) 82%, transparent); }
   .onboarding { width: min(100%, 430px); padding: 1.35rem; border: 1px solid var(--accent-border); background: var(--surface-1); box-shadow: 0 16px 48px rgba(0,0,0,0.25); }
   .eyebrow { margin: 0 0 0.35rem; color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; }

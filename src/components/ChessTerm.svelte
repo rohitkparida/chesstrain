@@ -59,7 +59,7 @@
     position: absolute;
     z-index: 20;
     left: 50%;
-    bottom: calc(100% + 0.55rem);
+    top: calc(100% + 0.55rem);
     width: min(280px, 78vw);
     display: grid;
     gap: 0.35rem;
@@ -73,7 +73,7 @@
     font-size: 0.78rem;
     line-height: 1.4;
   }
-  .definition-popover::after { content: ''; position: absolute; left: 50%; bottom: -0.35rem; width: 0.65rem; height: 0.65rem; transform: translateX(-50%) rotate(45deg); border-right: 1px solid var(--accent-border); border-bottom: 1px solid var(--accent-border); background: var(--surface-1); }
+  .definition-popover::after { content: ''; position: absolute; left: 50%; top: -0.35rem; width: 0.65rem; height: 0.65rem; transform: translateX(-50%) rotate(45deg); border-left: 1px solid var(--accent-border); border-top: 1px solid var(--accent-border); background: var(--surface-1); }
   .definition-popover strong { color: var(--text-1); font-size: 0.84rem; }
   .definition-popover a { position: relative; z-index: 1; color: var(--accent); font-weight: 700; text-decoration: none; }
 </style>
