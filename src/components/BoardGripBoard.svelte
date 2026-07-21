@@ -25,11 +25,20 @@
   }>();
 
   const viewFlipped = $derived(orientation === 'black' || (orientation === 'side-to-move' && turn === 'b'));
+  const displaySquares = $derived([...squares].sort((left, right) => {
+    const leftVisual = rotateSquare(orientSquare(left, viewFlipped), rotation);
+    const rightVisual = rotateSquare(orientSquare(right, viewFlipped), rotation);
+    const leftFile = leftVisual.charCodeAt(0);
+    const rightFile = rightVisual.charCodeAt(0);
+    const leftRank = Number(leftVisual[1]);
+    const rightRank = Number(rightVisual[1]);
+    return (rightRank - leftRank) || (leftFile - rightFile);
+  }));
 
 </script>
 
 <div class="square-board" aria-label="Coordinate training board">
-  {#each squares as square}
+  {#each displaySquares as square}
     {@const visualSquare = rotateSquare(orientSquare(square, viewFlipped), rotation)}
     {@const piece = pieces[square]}
     <button
