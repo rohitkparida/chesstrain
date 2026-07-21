@@ -39,11 +39,11 @@
     </div>
   {/if}
   {#if coachLoading}
-    <div class="coach-bubble loading"><span class="pulse">&#9679;</span> Coach is thinking...</div>
+    <div class="coach-bubble loading"><span class="pulse">&#9679;</span> Engine is checking...</div>
   {:else if feedbackType === 'wrong' && !reflectionOpen}
     <div class="coach-bubble reflection">
       {#if reflectionSeconds > 0}Reflect for {reflectionSeconds}s before seeing the explanation.{:else}Review the explanation when ready.{/if}
-      <button class="reveal-btn" onclick={onReveal} disabled={!canReveal}>Reveal coach</button>
+      <button class="reveal-btn" onclick={onReveal} disabled={!canReveal}>Show explanation</button>
     </div>
   {:else if coachText}
     <div class="coach-bubble"><span class="coach-icon">&#9822;</span> {coachText}</div>
