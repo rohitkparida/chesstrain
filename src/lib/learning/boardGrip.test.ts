@@ -5,6 +5,7 @@ import {
 	loosePieceSquaresFromFen,
 	makeBoardGripRound,
 	nextBoardGripRound,
+	NONE_ANSWER_RATE,
 	pinnedPieceSquaresFromFen,
 	randomBoardGripView
 } from './boardGrip';
@@ -44,6 +45,10 @@ describe('board grip helpers', () => {
 			{ orientation: 'white', rotation: 90 },
 			{ orientation: 'white', rotation: 270 }
 		]);
+	});
+
+	it('targets a fifteen percent None-answer rate', () => {
+		expect(NONE_ANSWER_RATE).toBe(0.15);
 	});
 
 	it('finds loose non-king pieces without including kings', () => {

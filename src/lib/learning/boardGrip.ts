@@ -28,6 +28,7 @@ export function randomBoardGripView(kind: BoardGripKind, random: () => number = 
 }
 
 const DRILL_KINDS: BoardGripKind[] = ['name-square', 'attackers', 'loose-pieces', 'pinned-pieces'];
+export const NONE_ANSWER_RATE = 0.15;
 const COLORS: Color[] = ['w', 'b'];
 const COLOR_NAME: Record<Color, string> = { w: 'White', b: 'Black' };
 const ANCHORS = new Set<PieceSymbol>(['k', 'q']);
@@ -194,6 +195,15 @@ export function nextBoardGripRound(
 	random: () => number = Math.random
 ): BoardGripRound {
 	const kind = randomKind(previous?.kind, random);
-	const fen = randomRealisticFen(previous?.fen ?? '', random);
-	return makeBoardGripRound(kind, fen, random);
+	if (kind === 'name-square') return makeBoardGripRound(kind, randomRealisticFen(previous?.fen ?? '', random), random);
+
+	const wantNone = random() < NONE_ANSWER_RATE;
+	let fen = randomRealisticFen(previous?.fen ?? '', random);
+	let round = makeBoardGripRound(kind, fen, random);
+	for (let attempt = 0; attempt < 12; attempt += 1) {
+		if ((round.answers.length === 0) === wantNone) return round;
+		fen = randomRealisticFen(fen, random);
+		round = makeBoardGripRound(kind, fen, random);
+	}
+	return round;
 }
