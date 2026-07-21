@@ -2,25 +2,15 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import BoardGripBoard from '../../components/BoardGripBoard.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
-  import { nextBoardGripRound, type BoardGripRound } from '../learning/boardGrip';
+  import { nextBoardGripRound, randomBoardGripView, type BoardGripRound } from '../learning/boardGrip';
   import { accuracyPercent } from '../learning/objectiveScoring';
   import { recordTrainingAttempt } from '../../stores/session';
   import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
   import type { BoardRotation } from '../chess/board';
 
   type GripOrientation = 'white' | 'black';
-
-  function randomOrientation(): GripOrientation {
-    return Math.random() < 0.5 ? 'white' : 'black';
-  }
-
-  function randomRotation(kind: BoardGripRound['kind']): BoardRotation {
-    if (kind !== 'name-square') return 0;
-    const roll = Math.random();
-    return roll < 1 / 3 ? 90 : roll < 2 / 3 ? 270 : 0;
-  }
-
   const initialRound = nextBoardGripRound();
+  const initialView = randomBoardGripView(initialRound.kind);
   let round = $state<BoardGripRound>(initialRound);
   let attempts = $state(0);
   let correct = $state(0);
@@ -29,8 +19,8 @@
   let totalCorrectTimeMs = $state(0);
   let startedAt = Date.now();
   let feedback = $state('');
-  let orientation = $state<GripOrientation>(randomOrientation());
-  let rotation = $state<BoardRotation>(randomRotation(initialRound.kind));
+  let orientation = $state<GripOrientation>(initialView.orientation);
+  let rotation = $state<BoardRotation>(initialView.rotation);
   let selected = $state<Set<string>>(new Set());
   let roundComplete = $state(false);
 
@@ -42,9 +32,10 @@
 
   function advanceRound() {
     round = nextBoardGripRound(round);
+    const view = randomBoardGripView(round.kind);
     selected = new Set();
-    orientation = randomOrientation();
-    rotation = randomRotation(round.kind);
+    orientation = view.orientation;
+    rotation = view.rotation;
     roundComplete = false;
     startedAt = Date.now();
   }
@@ -106,14 +97,15 @@
 
   function reset() {
     round = nextBoardGripRound(round);
+    const view = randomBoardGripView(round.kind);
     attempts = 0;
     correct = 0;
     streak = 0;
     bestStreak = 0;
     totalCorrectTimeMs = 0;
     selected = new Set();
-    orientation = randomOrientation();
-    rotation = randomRotation(round.kind);
+    orientation = view.orientation;
+    rotation = view.rotation;
     roundComplete = false;
     startedAt = Date.now();
     feedback = '';

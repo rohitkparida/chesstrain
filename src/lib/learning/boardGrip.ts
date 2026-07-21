@@ -1,4 +1,5 @@
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
+import type { BoardRotation } from '../chess/board';
 import { ALL_SQUARES, FILES, randomRealisticFen, randomSquare } from './nameTheSquare';
 
 export type BoardGripKind = 'name-square' | 'attackers' | 'loose-pieces' | 'pinned-pieces';
@@ -10,6 +11,20 @@ export interface BoardGripRound {
 	fen: string;
 	answers: string[];
 	targetSquare?: string;
+}
+
+export interface BoardGripView {
+	orientation: 'white' | 'black';
+	rotation: BoardRotation;
+}
+
+export function randomBoardGripView(kind: BoardGripKind, random: () => number = Math.random): BoardGripView {
+	const roll = random();
+	if (kind !== 'name-square') return { orientation: roll < 0.5 ? 'white' : 'black', rotation: 0 };
+	if (roll < 0.25) return { orientation: 'white', rotation: 0 };
+	if (roll < 0.5) return { orientation: 'black', rotation: 0 };
+	if (roll < 0.75) return { orientation: 'white', rotation: 90 };
+	return { orientation: 'white', rotation: 270 };
 }
 
 const DRILL_KINDS: BoardGripKind[] = ['name-square', 'attackers', 'loose-pieces', 'pinned-pieces'];

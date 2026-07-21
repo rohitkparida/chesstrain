@@ -5,7 +5,8 @@ import {
 	loosePieceSquaresFromFen,
 	makeBoardGripRound,
 	nextBoardGripRound,
-	pinnedPieceSquaresFromFen
+	pinnedPieceSquaresFromFen,
+	randomBoardGripView
 } from './boardGrip';
 
 function fenAfter(moves: string[]) {
@@ -34,6 +35,15 @@ describe('board grip helpers', () => {
 
 		expect(round.prompt).toBe(`Find ${round.targetSquare}`);
 		expect(round.answers).toEqual([round.targetSquare]);
+	});
+
+	it('maps equal name-square probability buckets to all four board orientations', () => {
+		expect([0.1, 0.3, 0.6, 0.9].map((roll) => randomBoardGripView('name-square', () => roll))).toEqual([
+			{ orientation: 'white', rotation: 0 },
+			{ orientation: 'black', rotation: 0 },
+			{ orientation: 'white', rotation: 90 },
+			{ orientation: 'white', rotation: 270 }
+		]);
 	});
 
 	it('finds loose non-king pieces without including kings', () => {
