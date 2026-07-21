@@ -40,6 +40,18 @@ export function mistakeKind(before: EngineEval, after: EngineEval, lossCp: numbe
 	return lossCp >= MISTAKE_THRESHOLD_CP ? 'evaluation-loss' : null;
 }
 
+export function isPuzzleWorthy(analysis: AnalyzedMove, verificationStatus: 'provisional' | 'verified'): boolean {
+	if (!analysis.before.bestMove || analysis.before.principalVariation.length === 0) return false;
+	const playedMove = `${analysis.candidate.move.from}${analysis.candidate.move.to}${analysis.candidate.move.promotion ?? ''}`;
+	if (analysis.before.bestMove === playedMove) return false;
+	const lossCp = Math.max(0, Math.round(playerPerspectiveLoss(analysis.before, analysis.after)));
+	const forcedMateChange = (analysis.before.mateIn !== null && analysis.before.mateIn > 0)
+		|| (analysis.after.mateIn !== null && analysis.after.mateIn > 0);
+	const sacrifice = isSacrificeIdea(analysis.candidate.fen, analysis.before);
+	const threshold = verificationStatus === 'verified' ? MISTAKE_THRESHOLD_CP : QUICK_THRESHOLD_CP;
+	return forcedMateChange || sacrifice || lossCp >= threshold;
+}
+
 export async function analyzeCandidate(engine: StockfishEngine, game: ImportedChessComGame, candidate: GameMoveCandidate, signal?: AbortSignal): Promise<AnalyzedMove | null> {
 	const quick = await quickAnalyzeCandidate(engine, game, candidate, signal);
 	return quick ? verifyCandidate(engine, quick, signal) : null;
@@ -62,7 +74,7 @@ export async function verifyCandidate(engine: StockfishEngine, analysis: Analyze
 export function exerciseFromAnalysis(analysis: AnalyzedMove, verificationStatus: 'provisional' | 'verified' = 'verified'): PersonalMistakeExercise | null {
 	const lossCp = Math.max(0, Math.round(playerPerspectiveLoss(analysis.before, analysis.after)));
 	const kind = isSacrificeIdea(analysis.candidate.fen, analysis.before) ? 'sacrifice-idea' : mistakeKind(analysis.before, analysis.after, lossCp) ?? (verificationStatus === 'provisional' && lossCp >= QUICK_THRESHOLD_CP ? 'evaluation-loss' : null);
-	if (!kind || !analysis.before.bestMove) return null;
+	if (!kind || !isPuzzleWorthy(analysis, verificationStatus)) return null;
 	return {
 		id: mistakeExerciseId(analysis.game.id, analysis.candidate.ply), gameId: analysis.game.id, ply: analysis.candidate.ply,
 		fen: analysis.candidate.fen, afterFen: analysis.candidate.afterFen,

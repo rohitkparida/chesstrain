@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
-import { exerciseFromAnalysis, isSacrificeIdea, mistakeKind, playerPerspectiveLoss, type AnalyzedMove } from './mistakeAnalysis';
+import { exerciseFromAnalysis, isPuzzleWorthy, isSacrificeIdea, mistakeKind, playerPerspectiveLoss, type AnalyzedMove } from './mistakeAnalysis';
 import type { ImportedChessComGame } from '$lib/chesscom/types';
 import type { EngineEval } from '$lib/chess/engine';
 
-const evaluation = (evalCp: number, mateIn: number | null = null): EngineEval => ({ bestMove: 'e2e4', evalCp, mateIn, principalVariation: [], depth: 12 });
+const evaluation = (evalCp: number, mateIn: number | null = null): EngineEval => ({ bestMove: 'e2e4', evalCp, mateIn, principalVariation: ['e2e4'], depth: 12 });
 
 describe('mistake analysis', () => {
 	it('normalizes the after-position back to the mover perspective for either color', () => {
@@ -29,7 +29,20 @@ describe('mistake analysis', () => {
 		const game = { id: 'g1', pgn: '', white: { username: 'player' }, black: { username: 'opponent' }, userColor: 'w', opponent: 'opponent', result: '1-0', endTime: 1, timeClass: 'rapid', rated: true, rules: 'chess', url: '', pgnHash: 'h' } as ImportedChessComGame;
 		const board = new Chess();
 		const move = board.move('e4');
-		const analysis: AnalyzedMove = { game, candidate: { ply: 1, moveNumber: 1, color: 'w', fen: new Chess().fen(), afterFen: board.fen(), move }, before: evaluation(0), after: evaluation(60) };
+		const before = evaluation(0);
+		before.bestMove = 'd2d4';
+		before.principalVariation = ['d2d4'];
+		const analysis: AnalyzedMove = { game, candidate: { ply: 1, moveNumber: 1, color: 'w', fen: new Chess().fen(), afterFen: board.fen(), move }, before, after: evaluation(60) };
 		expect(exerciseFromAnalysis(analysis, 'provisional')?.verificationStatus).toBe('provisional');
+	});
+
+	it('rejects engine noise and a move that already matches the best move', () => {
+		const board = new Chess();
+		const move = board.move('e4');
+		const analysis: AnalyzedMove = { game: {} as ImportedChessComGame, candidate: { ply: 1, moveNumber: 1, color: 'w', fen: new Chess().fen(), afterFen: board.fen(), move }, before: evaluation(0), after: evaluation(10) };
+		expect(isPuzzleWorthy(analysis, 'verified')).toBe(false);
+		analysis.before.bestMove = 'e2e4';
+		analysis.after = evaluation(100);
+		expect(isPuzzleWorthy(analysis, 'verified')).toBe(false);
 	});
 });
