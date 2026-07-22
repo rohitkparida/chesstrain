@@ -97,7 +97,7 @@
 </main>
 
 <style>
-  .train-home { display: grid; gap: 1.75rem; width: min(100%, 860px); }
+  .train-home { display: grid; gap: 1.75rem; width: min(100%, var(--content-width)); margin: 0 auto; }
   .intro, .group-heading { display: grid; gap: 0.3rem; }
   .eyebrow { margin: 0; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
   h1, h2, p { margin: 0; }

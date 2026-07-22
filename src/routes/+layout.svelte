@@ -99,6 +99,12 @@
           </div>
         </a>
 
+        <nav class="nav-links" aria-label="Primary">
+          <a class="nav-link" class:active={isActive('/')} href={appPath('/')}>Today</a>
+          <a class="nav-link" class:active={isActive('/train')} href={appPath('/train')}>Train</a>
+          <a class="nav-link" class:active={isActive('/dictionary')} href={appPath('/dictionary')}>Dictionary</a>
+        </nav>
+
         <div class="topbar-meta">
           {#if mistakeSync.status === 'syncing' || mistakeSync.status === 'analyzing'}
             <span class="sync-indicator" title="Checking your Chess.com games" aria-label="Checking your Chess.com games"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" /></svg></span>
@@ -118,12 +124,6 @@
           </details>
         </div>
       </div>
-
-      <nav class="nav-links" aria-label="Primary">
-        <a class="nav-link" class:active={isActive('/')} href={appPath('/')}>Today</a>
-        <a class="nav-link" class:active={isActive('/train')} href={appPath('/train')}>Train</a>
-        <a class="nav-link" class:active={isActive('/dictionary')} href={appPath('/dictionary')}>Dictionary</a>
-      </nav>
     </header>
   {:else}
     <header class="login-topbar">
@@ -167,6 +167,7 @@
 </div>
 
 <style>
+  :global(:root) { --content-width: 860px; }
   :global(:root) {
     --bg: #090b0e; --surface-1: #0d1117; --surface-2: #10141d; --surface-3: #1a2232;
     --border: #1a2232; --border-sub: #323238; --text-1: #ffffff; --text-2: #e1e1e6;
@@ -189,14 +190,16 @@
   :global(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .app-layout { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; overflow: hidden; }
   .topbar, .login-topbar { min-width: 0; background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 0.85rem 1rem; }
-  .topbar { display: grid; gap: 0.8rem; }
-  .topbar-row, .login-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .topbar { display: grid; }
+  .topbar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 1rem; }
+  .login-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   .brand { display: flex; align-items: center; gap: 0.6rem; color: inherit; text-decoration: none; }
   .logo-icon { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border: 1px solid var(--accent-border); border-radius: 5px; color: var(--accent); font-size: 0.75rem; font-weight: 800; }
   .logo-title { color: var(--text-1); font-size: 0.8rem; font-weight: 800; letter-spacing: 1.5px; }
   .logo-sub { color: var(--text-5); font-size: 0.68rem; }
   .topbar-meta, .nav-links { display: flex; align-items: center; gap: 0.75rem; }
-  .nav-links { gap: 0.35rem; }
+  .topbar-meta { justify-content: flex-end; }
+  .nav-links { justify-self: center; gap: 0.35rem; }
   .nav-link { padding: 0.42rem 0.7rem; border: 1px solid transparent; border-radius: 999px; color: var(--text-4); font-size: 0.82rem; text-decoration: none; }
   .nav-link:hover, .nav-link.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
   .profile-menu { position: relative; }
@@ -227,5 +230,5 @@
   .onboarding-actions button { min-height: 2.6rem; padding: 0.6rem 0.8rem; border: 1px solid var(--accent-border); border-radius: 6px; font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
   .onboarding-primary { background: var(--accent); color: var(--bg); }
   .onboarding-secondary { background: transparent; color: var(--accent); }
-  @media (max-width: 760px) { .topbar, .login-topbar { padding: 0.7rem 0.8rem; } .topbar-row { align-items: flex-start; flex-direction: column; gap: 0.5rem; } .topbar-meta { width: 100%; justify-content: flex-end; } .nav-links { width: 100%; } .nav-link { flex: 1; text-align: center; } .main-content { padding: 1rem 0.75rem 1.5rem; } }
+  @media (max-width: 760px) { .topbar, .login-topbar { padding: 0.7rem 0.8rem; } .topbar-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.35rem; } .logo-sub { display: none; } .logo-title { font-size: 0.7rem; } .topbar-meta { min-width: 0; } .nav-links { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; } .nav-links::-webkit-scrollbar { display: none; } .nav-link { flex: 0 0 auto; text-align: center; padding-inline: 0.5rem; } .main-content { padding: 1rem 0.75rem 1.5rem; } }
 </style>

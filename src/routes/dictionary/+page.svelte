@@ -65,7 +65,7 @@
 </main>
 
 <style>
-  .dictionary-page { max-width: 980px; display: grid; gap: 1.5rem; }
+  .dictionary-page { width: min(100%, var(--content-width)); margin: 0 auto; display: grid; gap: 1.5rem; }
   .page-header { display: grid; gap: 0.35rem; }
   .page-header h1, .page-header p { margin: 0; }
   .page-header h1 { color: var(--text-1); font-size: 1.8rem; }

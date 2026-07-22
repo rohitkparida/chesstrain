@@ -102,7 +102,7 @@
 </section>
 
 <style>
-  .plan { width: min(100%, 860px); display: grid; gap: 1rem; }
+  .plan { width: min(100%, var(--content-width)); margin: 0 auto; display: grid; gap: 1rem; }
   .plan-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
   .eyebrow, h1, h2, p { margin: 0; }
   .eyebrow, .label { color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }

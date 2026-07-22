@@ -78,7 +78,7 @@
 </main>
 
 <style>
-  .login-page { width: min(100%, 420px); margin: 8vh auto 0; }
+  .login-page { width: min(100%, var(--content-width)); margin: 8vh auto 0; }
   .eyebrow { margin: 0 0 0.4rem; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; }
   h1 { margin: 0; color: var(--text-1); font-size: 1.8rem; }
   form { display: grid; gap: 0.65rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }

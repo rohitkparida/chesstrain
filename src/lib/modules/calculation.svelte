@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { Chess } from 'chess.js';
   import ChessBoard from '../../components/ChessBoard.svelte';
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
@@ -8,7 +9,8 @@
   import { buildCalculationReplay, type CalculationReplay } from '../learning/calculationReplay';
   import type { ObjectiveMetric } from '../learning/objectiveScoring';
 
-  const solutionLine = ["Nxf7", "Rxf7", "Qd5+", "Kh8", "Qxa8"];
+  // Keep the curated line legal from the starting FEN; an impossible reply makes the drill unscorable.
+  const solutionLine = ["Nxf7", "Rxf7", "Qd5"];
   let notationInput = $state("");
   let feedback = $state("");
   let steps = $state<string[]>([]);
@@ -25,8 +27,22 @@
   let replayLine = $state<'user' | 'best'>('best');
   let replayStep = $state(0);
   let startedAt = Date.now();
+  let lineFen = $state('');
 
   const startFen = 'r3kr2/5p1p/8/6N1/8/8/PPP1PPPP/3QK3 w - - 0 1';
+
+  function handleBoardMove(from: string, to: string, afterFen: string) {
+    try {
+      const game = new Chess(lineFen || startFen);
+      const move = game.move({ from, to });
+      if (!move) return false;
+      notationInput = notationInput.trim() ? `${notationInput.trim()} ${move.san}` : move.san;
+      lineFen = afterFen;
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   function chooseReplayLine(line: 'user' | 'best') {
     replayLine = line;
@@ -44,6 +60,7 @@
       : null;
     replayLine = 'best';
     replayStep = 0;
+    lineFen = startFen;
     locked = assessment.status === 'correct' || assessment.status === 'incorrect';
     if (assessment.status === 'correct' || assessment.status === 'incorrect') {
       recordTrainingAttempt({ exerciseId: 'calculation-core-line', module: 'calculation', correctness: (assessment.score ?? 0) / 100, startedAt, tags: ['calculation'], source: 'curated', positionFingerprint: startFen });
@@ -93,6 +110,7 @@
     replay = null;
     replayLine = 'best';
     replayStep = 0;
+    lineFen = startFen;
     startedAt = Date.now();
   }
 
@@ -101,8 +119,8 @@
 
 <TrainingModuleShell
   title="Calculate the line"
-  task="Enter the line, then check it."
-  taskKeywords={['Enter the line', 'check']}
+  task="Calculate 3 moves: your move, their reply, then your continuation."
+  taskKeywords={['3 moves', 'your move', 'their reply', 'continuation']}
   onReset={reset}
   onSkip={reset}
 >
@@ -113,7 +131,7 @@
 
   <div class="board-layout">
     {#if !isBoardHidden}
-      <ChessBoard fen={startFen} playable={false} />
+      <ChessBoard fen={lineFen || startFen} playable={!locked && !(isBlindfold && !blindfoldReady)} onMove={handleBoardMove} showUndo={false} />
     {:else}
       <div class="blindfold-placeholder">Board state hidden. Calculate from memory.</div>
     {/if}
@@ -124,6 +142,7 @@
       <input bind:value={notationInput} placeholder="e.g. Nf3 d5 Nxe5" disabled={locked || (isBlindfold && !blindfoldReady)} />
       <button class="verify-btn" type="submit" disabled={locked || (isBlindfold && !blindfoldReady)}>Check line</button>
     </div>
+    <small class="input-hint">Type the line or click legal moves on the board.</small>
   </form>
 
   {#if feedback}<p class="feedback">{feedback}</p>{/if}
@@ -195,6 +214,7 @@
   .controls, .feedback, .tree-diff { padding-top: 0.75rem; border-top: 1px solid var(--border); }
   .feedback { color: var(--text-3); }
   .input-row { display: flex; gap: 0.5rem; }
+  .input-hint { color: var(--text-5); font-size: 0.76rem; }
   input {
     flex: 1;
     padding: 0.75rem;

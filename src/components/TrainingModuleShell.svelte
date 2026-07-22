@@ -73,7 +73,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
-    max-width: 600px;
+    width: min(100%, var(--content-width));
     margin: 0 auto;
   }
   .task-line { display: flex; align-items: baseline; gap: 0.6rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--border); color: var(--text-4); font-size: 0.84rem; line-height: 1.4; }

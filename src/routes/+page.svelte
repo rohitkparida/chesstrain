@@ -95,6 +95,6 @@
 </div>
 
 <style>
-  .train-link { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.5rem; width: min(100%, 860px); padding-top: 0.2rem; border-top: 1px solid var(--border); color: var(--text-5); font-size: 0.78rem; }
+  .train-link { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.5rem; width: min(100%, var(--content-width)); margin: 0 auto; padding-top: 0.2rem; border-top: 1px solid var(--border); color: var(--text-5); font-size: 0.78rem; }
   .train-link a { font-weight: 700; text-decoration: none; }
 </style>

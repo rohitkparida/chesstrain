@@ -201,7 +201,7 @@
 </main>
 
 <style>
-  .profile-page { max-width: 760px; display: flex; flex-direction: column; gap: 1.5rem; }
+  .profile-page { width: min(100%, var(--content-width)); margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
   .page-header h1 { margin: 0 0 0.4rem; color: var(--text-1); font-size: 1.7rem; }
   .page-header p:last-child { margin: 0; max-width: 620px; color: var(--text-4); line-height: 1.5; }
   .eyebrow { margin: 0 0 0.4rem; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; }
