@@ -262,7 +262,6 @@
     border: 3px solid #0a0f1a;
     border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   }
   .board-surface { position: relative; width: min(480px, 100%, 88vw); aspect-ratio: 1; min-width: 0; min-height: 0; }
   .annotations { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
