@@ -28,7 +28,7 @@
   let promptKeywords = $derived(
     round.kind === 'name-square' ? [round.targetSquare ?? '']
       : round.kind === 'attackers' ? ['controlling', 'marked square']
-      : round.kind === 'loose-pieces' ? ['undefended']
+      : round.kind === 'loose-pieces' ? [round.prompt.match(/undefended\s+(?:white|black)/i)?.[0] ?? 'undefended']
       : ['pinned']
   );
 
