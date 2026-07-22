@@ -74,4 +74,6 @@
   .correct::after { content: ''; position: absolute; inset: 5px; border: 3px solid var(--success); border-radius: 6px; box-shadow: inset 0 0 0 999px rgba(72, 206, 142, 0.18); pointer-events: none; z-index: 1; }
   .piece { color: #111; font-family: 'Segoe UI Symbol', 'Noto Chess', serif; font-size: clamp(1.7rem, 7vw, 2.8rem); line-height: 1; pointer-events: none; z-index: 2; text-shadow: 0 0 2px rgba(255,255,255,0.45); }
   .white-piece { color: #fff; text-shadow: 0 0 3px #000, 1px 1px 0 #222, -1px 1px 0 #222, 1px -1px 0 #222, -1px -1px 0 #222; }
+  .selected .piece { filter: drop-shadow(0 0 0.3rem var(--accent)); }
+  .correct .piece { filter: drop-shadow(0 0 0.3rem var(--success)); }
 </style>
