@@ -28,7 +28,7 @@
 </div>
 
 <style>
-  .context-strip { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; font-size: 0.82rem; }
+  .context-strip { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: min(100%, var(--content-width)); margin: 0 auto 1rem; font-size: 0.82rem; }
   .module-name { color: var(--text-2); font-weight: 700; }
   .right-meta { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
   .skill-tag { color: var(--accent); font-size: 0.75rem; font-weight: 600; }
