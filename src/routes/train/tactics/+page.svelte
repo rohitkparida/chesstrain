@@ -332,7 +332,7 @@
 
   .board-col { display: flex; flex-direction: column; gap: 1rem; }
 
-  .board-wrap { display: flex; justify-content: flex-start; }
+  .board-wrap { display: flex; justify-content: center; }
 
   .actions { display: flex; gap: 0.75rem; }
   .btn-primary {
