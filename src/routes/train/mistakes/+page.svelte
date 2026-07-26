@@ -3,11 +3,12 @@
   import { Chess } from 'chess.js';
   import ChessBoard from '../../../components/ChessBoard.svelte';
   import TrainingModuleShell from '../../../components/TrainingModuleShell.svelte';
+  import ActionButton from '../../../components/ActionButton.svelte';
   import { StockfishEngine } from '$lib/chess/engine';
   import { extractGameMoves, hasAmbiguousAccountColor, mistakeCacheKey, parseCachedMistakes, serializeMistakes, type GameMoveCandidate } from '$lib/learning/gameMistakes';
   import { applyCoordinateMove, sanForUciMove } from '$lib/chess/moves';
   import MistakeReplayBoard from './MistakeReplayBoard.svelte';
-  import { recordTrainingAttempt } from '../../../stores/session';
+  import { recordModuleAttempt } from '../../../stores/session';
   import { get } from 'svelte/store';
 import { sessionStore } from '../../../stores/session';
 import { profileStore } from '../../../stores/profile';
@@ -104,8 +105,8 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     const mistake = mistakes[active]; if (!mistake) return false;
     if (!applyCoordinateMove(mistake.fen, from, to)) return false;
     const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
-    if (`${from}${to}` === mistake.bestMove) { feedback = `Correct. Stockfish recommends ${sanForUciMove(mistake.fen, mistake.bestMove)}. This avoids about ${(mistake.loss / 100).toFixed(1)} pawns of evaluation loss.`; replayReady = true; prepareReplay(mistake); if (!activeAttempted) recordTrainingAttempt({ exerciseId, module: 'mistakes', correctness: 1, startedAt: Date.now(), tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; return true; }
-    feedback = 'That move is legal, but it does not address the problem Stockfish found. Try again.'; if (!activeAttempted) { recordTrainingAttempt({ exerciseId, module: 'mistakes', correctness: 0, startedAt: Date.now(), tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; } return false;
+    if (`${from}${to}` === mistake.bestMove) { feedback = `Correct. Stockfish recommends ${sanForUciMove(mistake.fen, mistake.bestMove)}. This avoids about ${(mistake.loss / 100).toFixed(1)} pawns of evaluation loss.`; replayReady = true; prepareReplay(mistake); if (!activeAttempted) recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 1, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; return true; }
+    feedback = 'That move is legal, but it does not address the problem Stockfish found. Try again.'; if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; } return false;
   }
   function giveUp() {
     const mistake = mistakes[active]; if (!mistake || activeAttempted) return;
@@ -113,7 +114,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     activeAttempted = true;
     replayReady = true;
     feedback = `You gave up. The best move was ${sanForUciMove(mistake.fen, mistake.bestMove)}. Review the line, then continue.`;
-    recordTrainingAttempt({ exerciseId, module: 'mistakes', correctness: 0, startedAt: Date.now(), tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
+    recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
     void prepareReplay(mistake);
   }
   async function prepareReplay(mistake: Mistake) {
@@ -174,12 +175,12 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   {#if mistakes.length === 0 && !analyzing}
     <div class="import-panel">
       <label for="username">Chess.com name</label>
-      <div class="row"><input id="username" bind:value={username} placeholder="e.g. hikaru" /><button class="primary" onclick={importUsername}>Find mistakes</button></div>
+      <div class="row"><input class="form-control" id="username" bind:value={username} placeholder="e.g. hikaru" /><ActionButton variant="primary" onclick={importUsername}>Find mistakes</ActionButton></div>
       <button class="secondary-link" type="button" onclick={() => showImportOptions = !showImportOptions} aria-expanded={showImportOptions}>{showImportOptions ? 'Hide PGN' : 'Paste a PGN'}</button>
       {#if showImportOptions}
         <label for="pgn">PGN</label>
-        <textarea id="pgn" bind:value={pgn} placeholder="Paste PGN here..."></textarea>
-        <div class="row">{#if hasAmbiguousAccountColor(pgn, username)}<label for="side">Your color</label><select id="side" bind:value={color}><option value="w">White</option><option value="b">Black</option></select>{:else}<span class="detected">Color detected from PGN</span>{/if}<button class="primary" onclick={analyzeGame}>Analyze</button></div>
+        <textarea class="form-control" id="pgn" bind:value={pgn} placeholder="Paste PGN here..."></textarea>
+        <div class="row">{#if hasAmbiguousAccountColor(pgn, username)}<label for="side">Your color</label><select class="form-control" id="side" bind:value={color}><option value="w">White</option><option value="b">Black</option></select>{:else}<span class="detected">Color detected from PGN</span>{/if}<ActionButton variant="primary" onclick={analyzeGame}>Analyze</ActionButton></div>
       {/if}
     </div>
   {/if}
@@ -193,16 +194,16 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
         <p class="status">{usingPgn ? status : syncState.gamesFound > 0 ? `Analyzing game ${Math.min(progressValue + 1, progressTotal)} of ${progressTotal}...` : 'Finding and analyzing games...'}</p>
         {#if progressTotal > 0}<progress max={progressTotal} value={Math.min(progressValue, progressTotal)} aria-label="Mistake analysis progress"></progress><small>{Math.min(progressValue, progressTotal)} / {progressTotal} games</small>{:else}<span class="progress-indeterminate" aria-label="Analysis in progress"></span>{/if}
       </div>
-      <button class="quiet" onclick={cancelAnalysis}>Pause</button>
+      <ActionButton variant="quiet" onclick={cancelAnalysis}>Pause</ActionButton>
     </div>
   {/if}
-  {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<div class="review-actions">{#if !activeAttempted}<button class="quiet" type="button" onclick={giveUp}>Give up</button>{/if}<button class="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</button></div>{/if}
-  {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><button class="primary" onclick={reviewAgain}>Review again</button><button class="quiet" onclick={analyzeNewerGames}>Analyze newer games</button></div></div>{/if}
+  {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<div class="review-actions">{#if !activeAttempted}<ActionButton variant="quiet" onclick={giveUp}>Give up</ActionButton>{/if}<ActionButton variant="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</ActionButton></div>{/if}
+  {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><ActionButton variant="primary" onclick={reviewAgain}>Review again</ActionButton><ActionButton variant="quiet" onclick={analyzeNewerGames}>Analyze newer games</ActionButton></div></div>{/if}
   {#if replayReady && mistakes[active]}
     <MistakeReplayBoard fen={replayStep === 0 ? mistakes[active].fen : replay[replayStep - 1]?.fen ?? mistakes[active].fen} arrows={[{ from: mistakes[active].move.from, to: mistakes[active].move.to, tone: 'played' }, { from: mistakes[active].bestMove.slice(0, 2), to: mistakes[active].bestMove.slice(2, 4), tone: 'engine' }]} continuation={replay.slice(1)} step={Math.max(0, replayStep - 1)} onNext={advanceReplay} />
   {/if}
 </TrainingModuleShell>
 
 <style>
-  .import-panel { display: grid; gap: 0.75rem; } label { color: var(--text-2); font-weight: 700; } input, textarea { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem; font: inherit; } textarea { min-height: 180px; resize: vertical; } .row, .puzzle-head, .review-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; } select { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); padding: 0.5rem; border-radius: 6px; } .primary, .quiet { border-radius: 6px; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; } .primary { background: var(--accent); color: var(--bg); border: 0; } .quiet { background: transparent; color: var(--accent); border: 1px solid var(--accent-border); } .secondary-link { width: fit-content; border: 0; background: transparent; color: var(--accent); padding: 0; font: inherit; font-size: 0.82rem; cursor: pointer; } .primary:disabled { opacity: 0.5; cursor: not-allowed; } .status, .feedback { color: var(--text-3); } .feedback { border-top: 1px solid var(--border); padding-top: 0.75rem; } .analysis-progress { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 0.75rem; } .progress-copy { display: grid; gap: 0.35rem; min-width: min(100%, 260px); } .progress-copy p { margin: 0; } progress { width: min(100%, 360px); height: 0.5rem; accent-color: var(--accent); } .progress-copy small { color: var(--text-5); font-size: 0.74rem; } .progress-indeterminate { display: block; width: min(100%, 360px); height: 0.5rem; overflow: hidden; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-dim)); background-size: 200% 100%; animation: progress-shimmer 1.4s linear infinite; } .detected { color: var(--text-3); } .review-complete { display: grid; gap: 0.75rem; } @keyframes progress-shimmer { to { background-position: -200% 0; } }
+  .import-panel { display: grid; gap: 0.75rem; } label { color: var(--text-2); font-weight: 700; } textarea.form-control { min-height: 180px; resize: vertical; } .row, .puzzle-head, .review-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; } .secondary-link { width: fit-content; border: 0; background: transparent; color: var(--accent); padding: 0; font: inherit; font-size: 0.82rem; cursor: pointer; } .status, .feedback { color: var(--text-3); } .feedback { border-top: 1px solid var(--border); padding-top: 0.75rem; } .analysis-progress { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 0.75rem; } .progress-copy { display: grid; gap: 0.35rem; min-width: min(100%, 260px); } .progress-copy p { margin: 0; } progress { width: min(100%, 360px); height: 0.5rem; accent-color: var(--accent); } .progress-copy small { color: var(--text-5); font-size: 0.74rem; } .progress-indeterminate { display: block; width: min(100%, 360px); height: 0.5rem; overflow: hidden; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-dim)); background-size: 200% 100%; animation: progress-shimmer 1.4s linear infinite; } .detected { color: var(--text-3); } .review-complete { display: grid; gap: 0.75rem; } @keyframes progress-shimmer { to { background-position: -200% 0; } }
 </style>

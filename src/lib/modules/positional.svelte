@@ -4,7 +4,7 @@
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import type { BoardAnnotation } from '../chess/annotations';
   import { scorePositionalAnalysis, type PositionalRubricScore } from '../learning/objectiveScoring';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   
   let evalScore = $state(0);
   let feedback = $state("");
@@ -49,7 +49,7 @@
       pawnStructure,
       planOrder: plans.map((plan) => plan.id),
     });
-    recordTrainingAttempt({ exerciseId: 'positional-core-analysis', module: 'positional', correctness: rubric.total / 100, startedAt, tags: ['positional'], source: 'curated', positionFingerprint: positionFen });
+    recordModuleAttempt({ exerciseId: 'positional-core-analysis', module: 'positional', correctness: rubric.total / 100, startedAt, tags: ['positional'], source: 'curated', positionFingerprint: positionFen });
     feedback = `Reference model: White is slightly better (about +0.5), with pressure on d6. Preferred plan: B, reroute the knight toward e5.`;
   }
 

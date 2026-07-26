@@ -246,6 +246,10 @@ export function recordTrainingAttempt(params: {
 	return recorded;
 }
 
+export function recordModuleAttempt(params: Omit<Parameters<typeof recordTrainingAttempt>[0], 'startedAt'> & { startedAt?: number }): TrainingAttempt {
+	return recordTrainingAttempt({ ...params, startedAt: params.startedAt ?? Date.now() });
+}
+
 export const selectNextPuzzle = (skill: string, subType: string): Puzzle | null => {
   let selected: Puzzle | null = null;
   sessionStore.update(s => {

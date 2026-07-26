@@ -2,9 +2,9 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import BoardGripBoard from '../../components/BoardGripBoard.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
-  import { makeBoardGripRound, nextBoardGripRound, randomBoardGripView, type BoardGripKind, type BoardGripRound } from '../learning/boardGrip';
+  import { makeBoardGripRound, nextBoardGripRound, nextBoardGripRoundForKind, randomBoardGripView, type BoardGripKind, type BoardGripRound } from '../learning/boardGrip';
   import { accuracyPercent } from '../learning/objectiveScoring';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
   import type { BoardRotation } from '../chess/board';
   import { randomRealisticFen } from '../learning/nameTheSquare';
@@ -38,7 +38,7 @@
   });
 
   function nextRound() {
-    return fixedKind ? makeBoardGripRound(fixedKind, randomRealisticFen(round.fen)) : nextBoardGripRound(round);
+    return fixedKind ? nextBoardGripRoundForKind(fixedKind, round.fen) : nextBoardGripRound(round);
   }
 
   let pieces = $derived(piecesFromFen(round.fen));
@@ -71,7 +71,7 @@
     streak++;
     bestStreak = Math.max(bestStreak, streak);
     totalCorrectTimeMs += responseMs;
-    recordTrainingAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 1, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
+    recordModuleAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 1, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
     advanceRound();
     feedback = `Correct: ${solvedLabel}. Next drill ready.`;
   }
@@ -79,7 +79,7 @@
   function markWrong(message: string) {
     attempts++;
     streak = 0;
-    recordTrainingAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 0, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
+    recordModuleAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 0, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
     const names: Record<string, string> = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' };
     const answerText = round.answers.map((square) => {
       const piece = pieces[square];

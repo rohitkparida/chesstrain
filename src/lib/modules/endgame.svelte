@@ -7,7 +7,7 @@
   import { getTerminalState, type TerminalState } from '../chess/board';
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   import {
     ENDGAME_SCENARIOS,
     legalCueAnnotations,
@@ -50,7 +50,7 @@
     currentFen = afterFen;
     const immediateResult = classifyTerminal(afterFen);
     lastResult = immediateResult ?? (movePreserves ? scenario.theoreticalResult : null);
-    recordTrainingAttempt({ exerciseId: scenario.id, module: 'endgame', correctness: movePreserves ? 1 : 0, startedAt: Date.now(), tags: ['endgame'], source: 'curated', positionFingerprint: beforeFen });
+    recordModuleAttempt({ exerciseId: scenario.id, module: 'endgame', correctness: movePreserves ? 1 : 0, tags: ['endgame'], source: 'curated', positionFingerprint: beforeFen });
     feedback = 'Calculating the engine reply...';
 
     if (immediateResult) {

@@ -207,3 +207,11 @@ export function nextBoardGripRound(
 	}
 	return round;
 }
+
+export function nextBoardGripRoundForKind(
+	kind: BoardGripKind,
+	previousFen = '',
+	random: () => number = Math.random
+): BoardGripRound {
+	return makeBoardGripRound(kind, randomRealisticFen(previousFen, random), random);
+}

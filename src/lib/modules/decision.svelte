@@ -7,7 +7,7 @@
   import { getTerminalState } from '../chess/board';
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   import {
     DECISION_SCENARIOS,
     isDecisionProcessReady,
@@ -57,7 +57,7 @@
     committed = true;
     currentFen = afterFen;
     lastMoveQuality = scoreDecisionMove(scenario, userMove);
-    recordTrainingAttempt({ exerciseId: scenario.id, module: 'decision', correctness: (process.processScore + lastMoveQuality) / 2, startedAt: Date.now(), tags: ['decision'], source: 'curated', positionFingerprint: beforeFen });
+    recordModuleAttempt({ exerciseId: scenario.id, module: 'decision', correctness: (process.processScore + lastMoveQuality) / 2, tags: ['decision'], source: 'curated', positionFingerprint: beforeFen });
     discoveredCandidate = null;
     discoveredReply = null;
     feedback = 'Commitment recorded. Waiting for the opponent reply...';

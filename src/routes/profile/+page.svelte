@@ -105,16 +105,16 @@
     </div>
     <label>
       Username
-      <input value={auth.username} readonly aria-describedby="username-help" />
+      <input class="form-control" value={auth.username} readonly aria-describedby="username-help" />
       <span id="username-help" class="field-help">Account name</span>
     </label>
     <label>
       Display name
-      <input bind:value={displayName} maxlength="50" placeholder="e.g. Rohit" autocomplete="name" />
+      <input class="form-control" bind:value={displayName} maxlength="50" placeholder="e.g. Rohit" autocomplete="name" />
     </label>
     <label>
       Chess.com name
-      <input bind:value={chessComUsername} maxlength="50" placeholder="Used to load your public games" autocomplete="username" />
+      <input class="form-control" bind:value={chessComUsername} maxlength="50" placeholder="Used to load your public games" autocomplete="username" />
     </label>
   </section>
 
@@ -135,7 +135,7 @@
     </div>
     <label>
       Theme
-      <select bind:value={theme}>
+      <select class="form-control" bind:value={theme}>
         <option value="system">System</option>
         <option value="dark">Dark</option>
         <option value="light">Light</option>
@@ -165,15 +165,15 @@
     {#if showPassword}<form class="password-form" onsubmit={savePassword}>
       <label>
         Current password
-        <input type="password" bind:value={currentPassword} maxlength="128" autocomplete="current-password" />
+        <input class="form-control" type="password" bind:value={currentPassword} maxlength="128" autocomplete="current-password" />
       </label>
       <label>
         New password
-        <input type="password" bind:value={newPassword} minlength="8" maxlength="128" autocomplete="new-password" />
+        <input class="form-control" type="password" bind:value={newPassword} minlength="8" maxlength="128" autocomplete="new-password" />
       </label>
       <label>
         Confirm new password
-        <input type="password" bind:value={confirmPassword} minlength="8" maxlength="128" autocomplete="new-password" />
+        <input class="form-control" type="password" bind:value={confirmPassword} minlength="8" maxlength="128" autocomplete="new-password" />
       </label>
       {#if passwordError}<p class="password-error" role="alert">{passwordError}</p>{/if}
       {#if passwordMessage}<p class="saved" role="status">{passwordMessage}</p>{/if}
@@ -209,11 +209,9 @@
   .section-heading h2 { margin: 0; color: var(--text-1); font-size: 1.05rem; }
   label { display: grid; gap: 0.35rem; color: var(--text-2); font-weight: 700; font-size: 0.88rem; }
   .field-help { color: var(--text-5); font-size: 0.76rem; font-weight: 400; }
-  input, select { width: 100%; border: 1px solid var(--border-sub); border-radius: 6px; background: var(--surface-2); color: var(--text-1); padding: 0.65rem 0.7rem; font: inherit; }
   input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0.15rem 0 0; accent-color: var(--accent); }
   .checkbox-label { display: flex; align-items: flex-start; gap: 0.55rem; }
   .dictionary-link { width: fit-content; font-size: 0.85rem; font-weight: 700; text-decoration: none; }
-  input:focus, select:focus { border-color: var(--accent); outline: 2px solid var(--accent-border); }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
   .stats div { display: flex; flex-direction: column; gap: 0.2rem; border-left: 2px solid var(--accent-border); padding-left: 0.7rem; }
   .stats strong { color: var(--text-1); font-size: 1.35rem; }

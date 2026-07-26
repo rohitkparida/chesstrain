@@ -5,7 +5,7 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import { assessCalculation } from '../learning/calculation';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   import { buildCalculationReplay, type CalculationReplay } from '../learning/calculationReplay';
   import type { ObjectiveMetric } from '../learning/objectiveScoring';
 
@@ -63,7 +63,7 @@
     lineFen = startFen;
     locked = assessment.status === 'correct' || assessment.status === 'incorrect';
     if (assessment.status === 'correct' || assessment.status === 'incorrect') {
-      recordTrainingAttempt({ exerciseId: 'calculation-core-line', module: 'calculation', correctness: (assessment.score ?? 0) / 100, startedAt, tags: ['calculation'], source: 'curated', positionFingerprint: startFen });
+      recordModuleAttempt({ exerciseId: 'calculation-core-line', module: 'calculation', correctness: (assessment.score ?? 0) / 100, startedAt, tags: ['calculation'], source: 'curated', positionFingerprint: startFen });
     }
     metrics = assessment.status === 'empty'
       ? []

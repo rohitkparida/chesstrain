@@ -5,7 +5,7 @@
   import { accuracyPercent } from '../learning/objectiveScoring';
   import { chooseInterleavedLine, type OpeningLine } from '../learning/openingPractice';
   import { STARTING_FEN } from '../chess/constants';
-  import { recordTrainingAttempt } from '../../stores/session';
+  import { recordModuleAttempt } from '../../stores/session';
   
   let currentStep = $state(0);
   let lineId = $state('ruy-lopez');
@@ -39,7 +39,7 @@
       feedback = step.replyText;
       currentStep++;
       correctMoves++;
-      if (currentStep === moves.length) recordTrainingAttempt({ exerciseId: `opening:${lineId}`, module: 'openings', correctness: correctMoves / Math.max(1, attempts), startedAt: Date.now() - attempts * 1000, tags: ['repertoire'], source: 'repertoire', positionFingerprint: STARTING_FEN });
+      if (currentStep === moves.length) recordModuleAttempt({ exerciseId: `opening:${lineId}`, module: 'openings', correctness: correctMoves / Math.max(1, attempts), startedAt: Date.now() - attempts * 1000, tags: ['repertoire'], source: 'repertoire', positionFingerprint: STARTING_FEN });
       return true;
     } else {
       feedback = 'Deviation from repertoire. Try the move again without revealing the line.';

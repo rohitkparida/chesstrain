@@ -187,6 +187,8 @@
   :global(body) { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-2); }
   :global(*, *::before, *::after) { box-sizing: border-box; }
   :global(a) { color: var(--accent); }
+  :global(.form-control) { width: 100%; border: 1px solid var(--border-sub); border-radius: 6px; background: var(--surface-2); color: var(--text-1); padding: 0.65rem 0.7rem; font: inherit; }
+  :global(.form-control:focus) { border-color: var(--accent); outline: 2px solid var(--accent-border); }
   :global(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .app-layout { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; overflow: hidden; }
   .topbar, .login-topbar { min-width: 0; background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 0.85rem 1rem; }
