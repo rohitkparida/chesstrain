@@ -2,11 +2,15 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import BoardGripBoard from '../../components/BoardGripBoard.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
-  import { nextBoardGripRound, randomBoardGripView, type BoardGripRound } from '../learning/boardGrip';
+  import { makeBoardGripRound, nextBoardGripRound, randomBoardGripView, type BoardGripKind, type BoardGripRound } from '../learning/boardGrip';
   import { accuracyPercent } from '../learning/objectiveScoring';
   import { recordTrainingAttempt } from '../../stores/session';
   import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
   import type { BoardRotation } from '../chess/board';
+  import { randomRealisticFen } from '../learning/nameTheSquare';
+  import { appPath } from '../../lib/paths';
+
+  let { fixedKind = null } = $props<{ fixedKind?: BoardGripKind | null }>();
 
   type GripOrientation = 'white' | 'black';
   const initialRound = nextBoardGripRound();
@@ -24,6 +28,19 @@
   let selected = $state<Set<string>>(new Set());
   let roundComplete = $state(false);
 
+  $effect(() => {
+    if (fixedKind && round.kind !== fixedKind) {
+      round = makeBoardGripRound(fixedKind, randomRealisticFen(round.fen));
+      const view = randomBoardGripView(fixedKind);
+      orientation = view.orientation;
+      rotation = view.rotation;
+    }
+  });
+
+  function nextRound() {
+    return fixedKind ? makeBoardGripRound(fixedKind, randomRealisticFen(round.fen)) : nextBoardGripRound(round);
+  }
+
   let pieces = $derived(piecesFromFen(round.fen));
   let promptKeywords = $derived(
     round.kind === 'name-square' ? [round.targetSquare ?? '']
@@ -37,7 +54,7 @@
   }
 
   function advanceRound() {
-    round = nextBoardGripRound(round);
+    round = nextRound();
     const view = randomBoardGripView(round.kind);
     selected = new Set();
     orientation = view.orientation;
@@ -102,7 +119,7 @@
   }
 
   function reset() {
-    round = nextBoardGripRound(round);
+    round = nextRound();
     const view = randomBoardGripView(round.kind);
     attempts = 0;
     correct = 0;
@@ -129,7 +146,8 @@
   }
 </script>
 
-<TrainingModuleShell title="Board Vision" task={round.prompt} taskKeywords={promptKeywords} onReset={reset} onSkip={skipRound}>
+<TrainingModuleShell title={fixedKind === 'name-square' ? 'Find the Square' : 'Board Vision'} task={round.prompt} taskKeywords={promptKeywords} onReset={reset} onSkip={skipRound}>
+  {#if fixedKind === null}<a class="focused-link" href={appPath('/train/squares/name')}>Practice Find the Square only</a>{/if}
   <div class="prompt" aria-live="polite">
     <span>{round.label}</span>
     <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
@@ -182,6 +200,8 @@
 
 <style>
   .prompt { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .focused-link { align-self: flex-start; color: var(--accent); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
+  .focused-link:hover { text-decoration: underline; }
   .prompt > span:first-child { grid-area: label; }
   .prompt > button { margin-left: auto; }
   .prompt span { color: var(--text-4); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; }
