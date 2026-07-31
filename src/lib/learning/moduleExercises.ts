@@ -24,20 +24,53 @@ function validate(exercise: TrainingExercise, prompt: string, source: NonNullabl
   return { ...exercise, source, verification, positionFingerprint: exercise.positionFingerprint ?? exerciseFingerprint(fen ?? '', prompt, exercise.module) } as ValidatedExercise;
 }
 
+function validateList<T>(
+	items: readonly T[],
+	toExercise: (item: T) => { exercise: TrainingExercise; prompt: string; conceptIds?: readonly string[] }
+): ValidatedExercise[] {
+	return items
+		.map((item) => {
+			const { exercise, prompt, conceptIds } = toExercise(item);
+			return validate(
+				{ ...exercise, source: 'curated', verification: 'stockfish', ...(conceptIds ? { conceptIds } : {}) },
+				prompt,
+				'curated',
+				'stockfish'
+			);
+		})
+		.filter((exercise): exercise is ValidatedExercise => exercise !== null);
+}
+
 function calculationExercises(): readonly ValidatedExercise[] {
-  return CALCULATION_EXERCISES.map((exercise: CalculationExerciseContent) => validate({ ...exercise, source: 'curated', verification: 'stockfish', conceptIds: exercise.tags }, exercise.concept, 'curated', 'stockfish')).filter((exercise): exercise is ValidatedExercise => exercise !== null);
+	return validateList(CALCULATION_EXERCISES, (exercise: CalculationExerciseContent) => ({
+		exercise,
+		prompt: exercise.concept,
+		conceptIds: exercise.tags
+	}));
 }
 
 function positionalExercises(): readonly ValidatedExercise[] {
-  return POSITIONAL_EXERCISES.map((exercise: PositionalExerciseContent) => validate({ ...exercise, source: 'curated', verification: 'stockfish', conceptIds: exercise.tags }, exercise.prompt, 'curated', 'stockfish')).filter((exercise): exercise is ValidatedExercise => exercise !== null);
+	return validateList(POSITIONAL_EXERCISES, (exercise: PositionalExerciseContent) => ({
+		exercise,
+		prompt: exercise.prompt,
+		conceptIds: exercise.tags
+	}));
 }
 
 function decisionExercises(): readonly ValidatedExercise[] {
-  return DECISION_SCENARIOS.map((exercise: DecisionScenario) => validate({ ...exercise, source: 'curated', verification: 'stockfish', conceptIds: ['decision:process'] }, exercise.prompt, 'curated', 'stockfish')).filter((exercise): exercise is ValidatedExercise => exercise !== null);
+	return validateList(DECISION_SCENARIOS, (exercise: DecisionScenario) => ({
+		exercise,
+		prompt: exercise.prompt,
+		conceptIds: ['decision:process']
+	}));
 }
 
 function endgameExercises(): readonly ValidatedExercise[] {
-  return ENDGAME_SCENARIOS.map((exercise: EndgameScenario) => validate({ ...exercise, source: 'curated', verification: 'stockfish', conceptIds: ['endgame:technique'] }, exercise.goal ?? exercise.title ?? exercise.id, 'curated', 'stockfish')).filter((exercise): exercise is ValidatedExercise => exercise !== null);
+	return validateList(ENDGAME_SCENARIOS, (exercise: EndgameScenario) => ({
+		exercise,
+		prompt: exercise.goal ?? exercise.title ?? exercise.id,
+		conceptIds: ['endgame:technique']
+	}));
 }
 
 const curated: readonly ValidatedExercise[] = [

@@ -199,7 +199,6 @@
   }
   function skipPuzzle() {
     if (attemptState.attempted || advancing) return;
-    recordPuzzleAttempt(activePuzzle, 'tactics', false, Date.now() - attemptStartedAt);
     nextPuzzle();
   }
 

@@ -114,7 +114,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     activeAttempted = true;
     replayReady = true;
     feedback = `You gave up. The best move was ${sanForUciMove(mistake.fen, mistake.bestMove)}. Review the line, then continue.`;
-    recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
+    recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, assistance: 'solution', tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
     void prepareReplay(mistake);
   }
   async function prepareReplay(mistake: Mistake) {
@@ -200,7 +200,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<div class="review-actions">{#if !activeAttempted}<ActionButton variant="quiet" onclick={giveUp}>Give up</ActionButton>{/if}<ActionButton variant="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</ActionButton></div>{/if}
   {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><ActionButton variant="primary" onclick={reviewAgain}>Review again</ActionButton><ActionButton variant="quiet" onclick={analyzeNewerGames}>Analyze newer games</ActionButton></div></div>{/if}
   {#if replayReady && mistakes[active]}
-    <MistakeReplayBoard fen={replayStep === 0 ? mistakes[active].fen : replay[replayStep - 1]?.fen ?? mistakes[active].fen} arrows={[{ from: mistakes[active].move.from, to: mistakes[active].move.to, tone: 'played' }, { from: mistakes[active].bestMove.slice(0, 2), to: mistakes[active].bestMove.slice(2, 4), tone: 'engine' }]} continuation={replay.slice(1)} step={Math.max(0, replayStep - 1)} onNext={advanceReplay} />
+    <MistakeReplayBoard fen={mistakes[active].fen} arrows={[{ from: mistakes[active].move.from, to: mistakes[active].move.to, tone: 'played' }, { from: mistakes[active].bestMove.slice(0, 2), to: mistakes[active].bestMove.slice(2, 4), tone: 'engine' }]} continuation={replay} step={replayStep} onNext={advanceReplay} />
   {/if}
 </TrainingModuleShell>
 

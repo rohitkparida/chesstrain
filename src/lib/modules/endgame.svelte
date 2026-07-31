@@ -14,8 +14,7 @@
     resultForTerminalState,
     scoreEndgameResult,
     scoreResultPreservation,
-    type EndgameScenario,
-    type TheoreticalResult,
+    type TheoreticalResult
   } from './endgameContent';
 
   let scenarioIndex = $state(0);

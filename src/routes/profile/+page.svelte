@@ -37,12 +37,6 @@
     difficultyOffset = profile.difficultyOffset;
   });
 
-  function applyTheme(value: ThemePreference) {
-    const light = value === 'light' || (value === 'system' && window.matchMedia?.('(prefers-color-scheme: light)').matches);
-    document.documentElement.classList.toggle('light', light);
-    try { localStorage.setItem('theme', light ? 'light' : 'dark'); } catch {}
-  }
-
   function saveProfile() {
     updateProfile({
       displayName: displayName.trim(),
@@ -51,7 +45,6 @@
       showDefinitions
 		,difficultyOffset
     });
-    applyTheme(theme);
     saved = true;
     window.setTimeout(() => { saved = false; }, 1800);
   }

@@ -1,5 +1,6 @@
 import type { SRSEntry } from '$lib/srs/sm2';
 import { LOCAL_ACCOUNT_USERNAME } from '$lib/account/localAuth';
+import { readScopedStorageItem } from '$lib/storage/localJsonStorage';
 import type { Puzzle, SessionHistory, SessionState } from '../../stores/session';
 import {
   isDailyPlan,
@@ -34,20 +35,12 @@ function scopedSessionKey(username: string): string {
 export function readSession(username = LOCAL_ACCOUNT_USERNAME): VersionedSessionSnapshot | null {
   if (typeof window === 'undefined') return null;
   try {
-    const scopedKey = scopedSessionKey(username);
-    let raw = localStorage.getItem(scopedKey);
-    if (!raw && username === LOCAL_ACCOUNT_USERNAME) {
-      raw = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (raw) {
-        localStorage.setItem(scopedKey, raw);
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    }
+    const raw = readScopedStorageItem(SESSION_STORAGE_KEY, username);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     const migrated = migrateStoredSession(parsed, username, readLegacyRatings(username));
     if (migrated && (!isVersionedSnapshot(parsed) || migrated.version !== parsed.version)) {
-      localStorage.setItem(scopedKey, JSON.stringify(migrated));
+      localStorage.setItem(scopedSessionKey(username), JSON.stringify(migrated));
     }
     return migrated;
   } catch { return null; }

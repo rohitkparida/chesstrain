@@ -4,6 +4,16 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			try {
+				var u = localStorage.getItem('magnus_local_authenticated') || 'rohitkparida';
+				var raw = localStorage.getItem('magnus_profile:' + u) || localStorage.getItem('magnus_profile');
+				var t = 'system';
+				if (raw) { var p = JSON.parse(raw); if (p && p.theme) t = p.theme; }
+				var isL = t === 'light' || (t === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+				document.documentElement.setAttribute('data-theme', isL ? 'light' : 'dark');
+			} catch (e) {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

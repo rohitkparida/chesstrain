@@ -2,7 +2,7 @@ import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
 import type { BoardRotation } from '../chess/board';
 import { ALL_SQUARES, FILES, randomRealisticFen, randomSquare } from './nameTheSquare';
 
-export type BoardGripKind = 'name-square' | 'attackers' | 'loose-pieces' | 'pinned-pieces';
+export type BoardGripKind = 'name-square' | 'find-square' | 'attackers' | 'loose-pieces' | 'pinned-pieces';
 
 export interface BoardGripRound {
 	kind: BoardGripKind;
@@ -20,14 +20,14 @@ export interface BoardGripView {
 
 export function randomBoardGripView(kind: BoardGripKind, random: () => number = Math.random): BoardGripView {
 	const roll = random();
-	if (kind !== 'name-square') return { orientation: roll < 0.5 ? 'white' : 'black', rotation: 0 };
+	if (kind !== 'name-square' && kind !== 'find-square') return { orientation: roll < 0.5 ? 'white' : 'black', rotation: 0 };
 	if (roll < 0.25) return { orientation: 'white', rotation: 0 };
 	if (roll < 0.5) return { orientation: 'black', rotation: 0 };
 	if (roll < 0.75) return { orientation: 'white', rotation: 90 };
 	return { orientation: 'white', rotation: 270 };
 }
 
-const DRILL_KINDS: BoardGripKind[] = ['name-square', 'attackers', 'loose-pieces', 'pinned-pieces'];
+const DRILL_KINDS: BoardGripKind[] = ['name-square', 'attackers', 'loose-pieces', 'pinned-pieces', 'find-square'];
 export const NONE_ANSWER_RATE = 0.15;
 const COLORS: Color[] = ['w', 'b'];
 const COLOR_NAME: Record<Color, string> = { w: 'White', b: 'Black' };
@@ -146,6 +146,18 @@ export function makeBoardGripRound(
 	fen: string,
 	random: () => number = Math.random
 ): BoardGripRound {
+	if (kind === 'find-square') {
+		const targetSquare = randomSquare('', random);
+		return {
+			kind,
+			label: 'Find square',
+			prompt: `Find ${targetSquare}`,
+			fen,
+			targetSquare,
+			answers: [targetSquare]
+		};
+	}
+
 	if (kind === 'name-square') {
 		const targetSquare = randomSquare('', random);
 		return {
@@ -195,7 +207,7 @@ export function nextBoardGripRound(
 	random: () => number = Math.random
 ): BoardGripRound {
 	const kind = randomKind(previous?.kind, random);
-	if (kind === 'name-square') return makeBoardGripRound(kind, randomRealisticFen(previous?.fen ?? '', random), random);
+	if (kind === 'name-square' || kind === 'find-square') return makeBoardGripRound(kind, randomRealisticFen(previous?.fen ?? '', random), random);
 
 	const wantNone = random() < NONE_ANSWER_RATE;
 	let fen = randomRealisticFen(previous?.fen ?? '', random);
@@ -214,4 +226,31 @@ export function nextBoardGripRoundForKind(
 	random: () => number = Math.random
 ): BoardGripRound {
 	return makeBoardGripRound(kind, randomRealisticFen(previousFen, random), random);
+}
+
+export function safeKingSquaresFromFen(fen: string): { squares: string[]; color: Color } {
+	const game = new Chess(fen);
+	const color = game.turn();
+
+	let kingSquare: string | null = null;
+	for (const sq of ALL_SQUARES) {
+		const piece = game.get(sq as Square);
+		if (piece && piece.type === 'k' && piece.color === color) {
+			kingSquare = sq;
+			break;
+		}
+	}
+
+	if (!kingSquare) return { squares: [], color };
+
+	type FileSymbol = (typeof FILES)[number];
+	const kingFile = FILES.indexOf(kingSquare[0] as FileSymbol);
+	const legalKingMoves = game.moves({ square: kingSquare as Square, verbose: true });
+	const safe = sortSquares(
+		legalKingMoves
+			.filter((m) => Math.abs(FILES.indexOf(m.to[0] as FileSymbol) - kingFile) <= 1)
+			.map((m) => m.to)
+	);
+
+	return { squares: safe, color };
 }

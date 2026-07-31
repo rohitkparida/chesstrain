@@ -12,8 +12,7 @@
     DECISION_SCENARIOS,
     isDecisionProcessReady,
     scoreDecisionMove,
-    scoreDecisionProcess,
-    type DecisionScenario,
+    scoreDecisionProcess
   } from './decisionContent';
 
   let scenarioIndex = $state(0);

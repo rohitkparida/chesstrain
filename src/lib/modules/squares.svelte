@@ -1,218 +1,199 @@
 <script lang="ts">
-  import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
-  import BoardGripBoard from '../../components/BoardGripBoard.svelte';
-  import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
-  import { makeBoardGripRound, nextBoardGripRound, nextBoardGripRoundForKind, randomBoardGripView, type BoardGripKind, type BoardGripRound } from '../learning/boardGrip';
+  import { onMount, onDestroy } from 'svelte';
+  import { DRILLS, pickRandomDrillId } from '$lib/drills/registry';
+  import type { LazyDrillEntry, DrillContext } from '$lib/drills/types';
+  import DrillRunner from '../../components/drills/DrillRunner.svelte';
+  import type { AttemptRecordEvent } from '$lib/drills/runner';
+  import { recordModuleAttempt, sessionStore } from '../../stores/session';
   import { accuracyPercent } from '../learning/objectiveScoring';
-  import { recordModuleAttempt } from '../../stores/session';
-  import { ALL_SQUARES, piecesFromFen } from '../learning/nameTheSquare';
-  import type { BoardRotation } from '../chess/board';
-  import { randomRealisticFen } from '../learning/nameTheSquare';
+  import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import { appPath } from '../../lib/paths';
 
-  let { fixedKind = null } = $props<{ fixedKind?: BoardGripKind | null }>();
+  let { fixedKind = null } = $props<{ fixedKind?: string | null }>();
 
-  type GripOrientation = 'white' | 'black';
-  const initialRound = nextBoardGripRound();
-  const initialView = randomBoardGripView(initialRound.kind);
-  let round = $state<BoardGripRound>(initialRound);
+  const STORAGE_KEY = 'board_vision_active_drills';
+  const visionDrillEntries = Object.values(DRILLS).filter((d) => d.module === 'board-grip');
+  const allVisionIds = visionDrillEntries.map((d) => d.id);
+
+  let selectedDrillIds = $state<string[]>([...allVisionIds]);
+  let currentDrillId = $state<string>(allVisionIds[0]);
+  let manualOrientation = $state<'white' | 'black' | null>(null);
+  let currentUserId = $state<string>('guest');
+  let reloadNonce = $state(0);
+
   let attempts = $state(0);
-  let correct = $state(0);
+  let correctCount = $state(0);
   let streak = $state(0);
   let bestStreak = $state(0);
   let totalCorrectTimeMs = $state(0);
-  let startedAt = Date.now();
-  let feedback = $state('');
-  let orientation = $state<GripOrientation>(initialView.orientation);
-  let rotation = $state<BoardRotation>(initialView.rotation);
-  let selected = $state<Set<string>>(new Set());
-  let roundComplete = $state(false);
 
-  $effect(() => {
-    if (fixedKind && round.kind !== fixedKind) {
-      round = makeBoardGripRound(fixedKind, randomRealisticFen(round.fen));
-      const view = randomBoardGripView(fixedKind);
-      orientation = view.orientation;
-      rotation = view.rotation;
+  const unsubscribe = sessionStore.subscribe((state) => {
+    const nextUser = state.userId ?? 'guest';
+    if (nextUser !== currentUserId) {
+      currentUserId = nextUser;
+      resetAccountState();
+      loadUserPreferences();
     }
   });
 
-  function nextRound() {
-    return fixedKind ? nextBoardGripRoundForKind(fixedKind, round.fen) : nextBoardGripRound(round);
-  }
+  onDestroy(() => unsubscribe());
 
-  let pieces = $derived(piecesFromFen(round.fen));
-  let promptKeywords = $derived(
-    round.kind === 'name-square' ? [round.targetSquare ?? '']
-      : round.kind === 'attackers' ? ['controlling', 'marked square']
-      : round.kind === 'loose-pieces' ? [round.prompt.match(/undefended\s+(?:white|black)/i)?.[0] ?? 'undefended']
-      : ['pinned']
-  );
-
-  function sameSquares(candidate: Set<string>) {
-    return candidate.size === round.answers.length && round.answers.every((square) => candidate.has(square));
-  }
-
-  function advanceRound() {
-    round = nextRound();
-    const view = randomBoardGripView(round.kind);
-    selected = new Set();
-    orientation = view.orientation;
-    rotation = view.rotation;
-    roundComplete = false;
-    startedAt = Date.now();
-  }
-
-  function markCorrect() {
-    const solvedLabel = round.label;
-    const responseMs = Date.now() - startedAt;
-    attempts++;
-    correct++;
-    streak++;
-    bestStreak = Math.max(bestStreak, streak);
-    totalCorrectTimeMs += responseMs;
-    recordModuleAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 1, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
-    advanceRound();
-    feedback = `Correct: ${solvedLabel}. Next drill ready.`;
-  }
-
-  function markWrong(message: string) {
-    attempts++;
-    streak = 0;
-    recordModuleAttempt({ exerciseId: `board-grip:${round.kind}`, module: 'board-grip', correctness: 0, startedAt, completedAt: Date.now(), tags: [round.kind], source: 'generated', positionFingerprint: round.fen });
-    const names: Record<string, string> = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' };
-    const answerText = round.answers.map((square) => {
-      const piece = pieces[square];
-      return piece ? `${square} ${piece.color === 'w' ? 'white' : 'black'} ${names[piece.type] ?? 'piece'}` : square;
-    }).join(', ');
-    feedback = `${message} Correct squares: ${answerText || 'none'}.`;
-    roundComplete = true;
-  }
-
-  function evaluate(candidate: Set<string>, usedNone = false) {
-    if (sameSquares(candidate)) {
-      markCorrect();
-      return;
-    }
-
-    if (usedNone) {
-      markWrong('Not quite. This round has one or more marked squares.');
-    } else if (round.answers.length === 0) {
-      markWrong('No squares this time. Use No squares.');
-    } else {
-      markWrong('Not quite. The round is complete; continue to see the next drill.');
-    }
-  }
-
-  function chooseSquare(square: string) {
-    if (roundComplete) return;
-    if (round.kind === 'name-square') {
-      evaluate(new Set([square]));
-      return;
-    }
-
-    const next = new Set(selected);
-    if (next.has(square)) next.delete(square);
-    else next.add(square);
-    selected = next;
-    feedback = `${selected.size} selected. Check when ready, or choose None.`;
-  }
-
-  function reset() {
-    round = nextRound();
-    const view = randomBoardGripView(round.kind);
+  function resetAccountState() {
+    selectedDrillIds = [...allVisionIds];
+    currentDrillId = allVisionIds[0];
     attempts = 0;
-    correct = 0;
+    correctCount = 0;
     streak = 0;
     bestStreak = 0;
     totalCorrectTimeMs = 0;
-    selected = new Set();
-    orientation = view.orientation;
-    rotation = view.rotation;
-    roundComplete = false;
-    startedAt = Date.now();
-    feedback = '';
   }
 
-  function continueAfterWrong() {
-    if (!roundComplete) return;
-    advanceRound();
-    feedback = '';
+  import { readJson, writeJson } from '$lib/storage/localJsonStorage';
+
+  function loadUserPreferences() {
+    if (fixedKind) return;
+    const validSaved = readJson(`${STORAGE_KEY}_${currentUserId}`, (parsed) => {
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const filtered = parsed.filter((id): id is string => typeof id === 'string' && allVisionIds.includes(id));
+        return filtered.length > 0 ? filtered : null;
+      }
+      return null;
+    });
+    if (validSaved) {
+      selectedDrillIds = validSaved;
+      currentDrillId = validSaved[0];
+      return;
+    }
+    resetAccountState();
   }
 
-  function skipRound() {
-    advanceRound();
-    feedback = '';
+  onMount(() => loadUserPreferences());
+
+  $effect(() => {
+    if (fixedKind === 'name-square') {
+      selectedDrillIds = ['vision.name-square'];
+      currentDrillId = 'vision.name-square';
+    }
+  });
+
+  function saveFilter(ids: string[]) {
+    writeJson(`${STORAGE_KEY}_${currentUserId}`, ids);
   }
+
+  let currentEntry = $derived<LazyDrillEntry>(
+    DRILLS[currentDrillId] ?? DRILLS['vision.name-square']
+  );
+
+  const context = $derived<DrillContext>({
+    userId: currentUserId,
+    difficulty: 1200,
+    random: Math.random
+  });
+
+  function toggleDrillFilter(id: string) {
+    if (fixedKind) return;
+    const next = selectedDrillIds.includes(id)
+      ? selectedDrillIds.length > 1 ? selectedDrillIds.filter((d) => d !== id) : selectedDrillIds
+      : [...selectedDrillIds, id];
+    selectedDrillIds = next;
+    saveFilter(next);
+  }
+
+  function handleRecordAttempt(event: AttemptRecordEvent) {
+    attempts++;
+    if (event.correct) {
+      correctCount++;
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      totalCorrectTimeMs += event.timeMs;
+    } else {
+      streak = 0;
+    }
+
+    recordModuleAttempt({
+      exerciseId: event.drillId,
+      module: 'board-grip',
+      correctness: event.score,
+      assistance: event.assistance === 'solution' ? 'solution' : undefined,
+      startedAt: Date.now() - event.timeMs,
+      completedAt: Date.now(),
+      tags: [event.drillId],
+      source: 'generated',
+      positionFingerprint: event.fingerprint
+    });
+  }
+
+  function handleNextDrill() {
+    currentDrillId = pickRandomDrillId(selectedDrillIds, currentDrillId);
+    reloadNonce += 1;
+  }
+
+  function toggleViewOrientation() {
+    manualOrientation = manualOrientation === 'black' ? 'white' : 'black';
+  }
+
+  const avgSpeedSec = $derived(correctCount > 0 ? (totalCorrectTimeMs / correctCount / 1000).toFixed(1) : '-');
+  const accuracy = $derived(accuracyPercent(correctCount, attempts));
 </script>
 
-<TrainingModuleShell title={fixedKind === 'name-square' ? 'Find the Square' : 'Board Vision'} task={round.prompt} taskKeywords={promptKeywords} onReset={reset} onSkip={skipRound}>
-  {#if fixedKind === null}<a class="focused-link" href={appPath('/train/squares/name')}>Practice Find the Square only</a>{/if}
-  <div class="prompt" aria-live="polite">
-    <span>{round.label}</span>
-    <span class="mode">{round.kind === 'name-square' ? 'One-tap answer' : 'Multi-select answer'}</span>
-    <button onclick={() => orientation = orientation === 'black' ? 'white' : 'black'}>
-      {orientation === 'black' ? 'White view' : 'Black view'}
-    </button>
-  </div>
+<main class="module-container" data-workflow="task-commit-feedback-continue">
+  <div class="top-nav"><a href={appPath('/train')} class="back-link">&larr; Training Catalog</a></div>
 
-  {#if round.kind !== 'name-square' && !roundComplete}
-    <div class="drill-actions">
-      <button onclick={() => evaluate(selected)} disabled={selected.size === 0}>Check</button>
-      <button onclick={() => evaluate(new Set(), true)}>None</button>
-      {#if selected.size > 0}
-        <button class="ghost" onclick={() => selected = new Set()}>Clear</button>
-      {/if}
+  <ObjectiveMetrics
+    items={[
+      { label: 'Attempts', value: String(attempts) },
+      { label: 'Accuracy', value: `${accuracy}%` },
+      { label: 'Avg Speed', value: avgSpeedSec === '-' ? '-' : `${avgSpeedSec}s` },
+      { label: 'Best Streak', value: String(bestStreak) }
+    ]}
+  />
+
+  {#if !fixedKind}
+    <div class="filter-bar">
+      <span class="filter-label">Drill Mix:</span>
+      <div class="filter-chips">
+        {#each visionDrillEntries as drill (drill.id)}
+          <button
+            type="button"
+            class="chip"
+            class:active={selectedDrillIds.includes(drill.id)}
+            onclick={() => toggleDrillFilter(drill.id)}
+          >
+            {drill.label}
+          </button>
+        {/each}
+      </div>
     </div>
   {/if}
 
-  <div class:locked={roundComplete}>
-    <BoardGripBoard
-    squares={ALL_SQUARES}
-      {pieces}
-      {selected}
-      orientation={orientation}
-      rotation={round.kind === 'name-square' ? rotation : 0}
-      markedSquare={round.kind === 'attackers' ? round.targetSquare : undefined}
-      correctSquares={roundComplete ? round.answers : []}
-      onChoose={chooseSquare}
-    />
+  <DrillRunner
+    entry={currentEntry}
+    context={context}
+    reloadNonce={reloadNonce}
+    orientationOverride={manualOrientation}
+    onNextDrill={handleNextDrill}
+    onRecordAttempt={handleRecordAttempt}
+  />
+
+  <div class="bottom-bar">
+    <button type="button" class="view-toggle-btn" onclick={toggleViewOrientation}>
+      View: {manualOrientation ?? 'Auto'}
+    </button>
   </div>
-
-  <p class="feedback" role="status">{feedback}</p>
-
-  {#if roundComplete}
-    <button class="continue" onclick={continueAfterWrong}>Continue</button>
-  {/if}
-
-  {#if attempts > 0}
-    <ObjectiveMetrics
-      title="Board vision results"
-      items={[
-        { label: 'Accuracy', value: `${accuracyPercent(correct, attempts) ?? 0}%` },
-        { label: 'Current / best streak', value: `${streak} / ${bestStreak}` },
-        { label: 'Average solved time', value: correct ? `${(totalCorrectTimeMs / correct / 1000).toFixed(1)}s` : 'No solved drill yet' }
-      ]}
-      note="Accuracy counts checked answers, wrong square taps in name-square mode, and wrong No squares calls."
-    />
-  {/if}
-</TrainingModuleShell>
+</main>
 
 <style>
-  .prompt { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-  .focused-link { align-self: flex-start; color: var(--accent); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
-  .focused-link:hover { text-decoration: underline; }
-  .prompt > span:first-child { grid-area: label; }
-  .prompt > button { margin-left: auto; }
-  .prompt span { color: var(--text-4); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; }
-  .prompt .mode { color: var(--text-3); font-size: 0.7rem; white-space: nowrap; }
-  .prompt button, .drill-actions button { padding: 0.45rem 0.7rem; background: transparent; border: 1px solid var(--border-sub); border-radius: 6px; color: var(--text-3); cursor: pointer; }
-  .prompt button:hover, .drill-actions button:hover { border-color: var(--accent-border); color: var(--accent); }
-  .drill-actions { display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
-  .drill-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
-  .drill-actions .ghost { color: var(--text-4); }
-  .locked { pointer-events: none; opacity: 0.72; }
-  .continue { position: sticky; bottom: 0.75rem; z-index: 3; align-self: center; padding: 0.55rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: var(--bg); cursor: pointer; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
-  .feedback { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--border); color: var(--text-3); }
-  @media (max-width: 640px) { .prompt > button { margin-left: 0; } }
+  .module-container { max-width: var(--content-width); margin: 0 auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .top-nav { display: flex; align-items: center; }
+  .back-link { color: var(--text-4); font-size: 0.85rem; text-decoration: none; }
+  .back-link:hover { color: var(--accent); }
+  .filter-bar { display: flex; align-items: center; gap: 0.75rem; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; }
+  .filter-label { font-size: 0.8rem; font-weight: 600; color: var(--text-3); }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s ease; }
+  .chip:hover { border-color: var(--accent-border); color: var(--text-1); }
+  .chip.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); font-weight: 600; }
+  .bottom-bar { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+  .view-toggle-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; }
+  .view-toggle-btn:hover { border-color: var(--accent); color: var(--text-1); }
 </style>

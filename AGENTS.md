@@ -1,117 +1,201 @@
-## Project Configuration
+# Magnus Engine Agent Guide
 
-- **Language**: TypeScript
-- **Package Manager**: npm
-- **Add-ons**: none
+Read this file before changing code. Magnus Engine is an adaptive chess-training
+SPA built with SvelteKit, TypeScript, chess.js, browser Stockfish, Supabase-ready
+repositories, and Vitest.
 
----
+## Product Model
 
-# Magnus Engine � Agent Baseline
+The learning loop is:
 
-Adaptive chess training system. Read this before touching any code.
-
----
-
-## What It Is
-
-A web app that trains chess players using spaced repetition, adaptive difficulty, and six distinct training modules. The core loop: serve a problem slightly above the user's level ? score it ? update their weakness profile ? schedule return via SRS.
-
----
-
-## Stack
-
-| Layer | Choice | Why |
-|---|---|---|
-| Framework | **SvelteKit** | Smallest compiled output, built-in reactivity, no Zustand needed |
-| Chess rules | **chess.js** | Framework-agnostic, battle-tested |
-| Board rendering | **chessground** | Framework-agnostic DOM library, use directly (no wrapper) |
-| Engine | **Stockfish WASM** | Runs in-browser, no server needed |
-| Database | **Supabase** | Postgres + Auth + Realtime, hosted |
-| SRS | **Custom SM-2** | Stored in Supabase, per-category Elo ratings |
-| PGN | **pgn-parser** | Import user games |
-| Voice | **Web Speech API** | Transcription during calculation mode |
-
----
-
-## Key Decisions (Do Not Revisit Without Good Reason)
-
-- **No SSR.** This is a pure SPA. No server components, no SSR routes.
-- **No state library.** Svelte stores replace Zustand. Keep state local unless truly global.
-- **Engine runs client-side.** Stockfish WASM only. No server-side analysis.
-- **Chessground used directly.** No Svelte wrapper � mount it in `onMount`, destroy in `onDestroy`.
-- **CSS is scoped per-component.** No global utility classes. No Tailwind.
-
----
-
-## Six Training Modules
-
-1. **Pattern Recognition** � Click-to-move, timed, 40+ taxonomy tags
-2. **Calculation** � Notation input, tree diff visualizer, 4 sub-modes
-3. **Positional Understanding** � Evaluation / Guess the Move / Imbalance ID / Plan Ranking
-4. **Endgame Technique** � Play vs perfect engine, technique score, gated progression
-5. **Opening Preparation** � Repertoire tree, move trainer, deviation scramble, game import
-6. **Decision-Making** � Process checklist overlay, full games, blunder trap, resilience mode
-
----
-
-## Adaptive Engine (Core Logic)
-
-- Every puzzle has an Elo rating. User has an Elo per skill x sub-type.
-- Queue serves `user_elo + 50-100` in weakest categories.
-- Weakness stalker drills narrower sub-types until root cause found.
-- Forgetting curve: per-pattern learning rate ? dynamic retention intervals.
-- Cognitive load monitor: accuracy drop over session time ? auto-shift to lower intensity.
-
----
-
-## DB Tables (Key)
-
-```
-users, profiles
-puzzles (id, elo, tags[], pgn, solution)
-user_puzzle_history (user_id, puzzle_id, result, time_ms, scheduled_at)
-user_skill_ratings (user_id, skill, sub_type, elo)
-openings (eco, moves, concept)
-user_opening_tree (user_id, fen, correct_move, last_seen)
-games (user_id, pgn, source, analyzed)
-sessions (user_id, type, started_at, ended_at)
-session_events (session_id, module, puzzle_id, result)
+```text
+choose exercise -> commit answer -> receive feedback -> record attempt -> schedule review
 ```
 
----
+Current training modules are Board Vision, Tactics, Calculation, Positional,
+Decision, Openings, Endgame, and My Mistakes. Today is finite; unlocked Train
+modules are repeatable. Guest mode keeps all modules available.
 
-## Puzzle Data Sources
+Core product rules:
 
-- Lichess open puzzle DB (~4M puzzles, tagged, rated)
-- Syzygy tablebases for endgame positions
-- GM game PGN corpus for Guess-the-Move / The Mirror
+- Spoonfeed the workflow, not the answer.
+- Keep instructions short and highlight only the decisive words.
+- Preserve useful struggle, but remove ambiguity about what action is expected.
+- Do not reveal exact answers before commitment.
+- Show the answer after an incorrect committed attempt or Give up.
+- Skip does not count as a failed attempt. Give up records solution assistance.
+- Mastery uses unassisted attempts only.
+- Persist progress and preferences per account. Never leak state across accounts.
 
----
+## Architecture
 
-## File Structure (Target)
-
-```
-src/
-  lib/
-    chess/        # chess.js, chessground init, Stockfish worker
-    srs/          # SM-2 scheduler, Elo delta math
-    db/           # Supabase client, typed queries
-    modules/      # One folder per training module
-  routes/
-    /             # Dashboard + daily brief
-    /train/[module]
-    /openings
-    /games        # Import + review
-  stores/         # Svelte stores (session, profile, queue)
-  components/     # Shared UI (ChessBoard, Timer, FeedbackFlash)
-```
-
----
-
-## Code Rules
-
-- Components stay under ~150 lines. Split if larger.
-- No `any` types � TypeScript strict mode on.
-- Every Supabase query goes through `src/lib/db/` � no raw fetch calls in components.
+- The app is a static SPA. Do not add SSR-only behavior or server components.
+- Use Svelte stores for global client state. Do not add another state library.
+- Keep chess rules in pure TypeScript modules and verify legality with chess.js.
 - Stockfish runs in a Web Worker. Never block the main thread.
-- All SRS logic lives in `src/lib/srs/` � pure functions, fully testable.
+- Supabase access belongs behind `src/lib/db/` or repository interfaces.
+- SRS, scoring, mastery, queueing, and difficulty logic stay outside components.
+- CSS is scoped per component. Use the existing global design tokens.
+
+### Exercise Platform
+
+The exercise platform uses universal orchestration with targeted interactions:
+
+- `src/lib/drills/`: definitions, registry, runner, and contracts.
+- `src/components/drills/`: interaction adapters and shared runner UI.
+- Domain solvers remain in their learning or chess modules.
+
+Universal behavior includes loading, active/evaluating/feedback states, timing,
+attempt recording, assistance, persistence, SRS metadata, Skip, Give up, and
+Continue. Interaction adapters own only how an answer is collected.
+
+Rules for extending it:
+
+- Add adapters only when a real migrated exercise requires a new interaction.
+- Never add drill-ID conditionals to the runner.
+- Never inspect drill-specific private-data fields in the runner.
+- Keep generated instances JSON-serializable and versioned.
+- Pass only public data to interaction components; answers stay private.
+- Keep registry entries lightweight and lazy-load drill implementations.
+- Keep answer reveal owned by the drill definition.
+- Suppress stale generation, evaluation, engine, and worker callbacks.
+- A standard drill should require one solver, one definition, one registry entry,
+  and focused tests. It should not require runner or route changes.
+- Do not call a module "migrated" until its live route uses the new platform with
+  behavioral parity.
+
+Board Vision currently establishes the square-tap and square-select patterns.
+The Tactics registry entry is a prototype until it preserves the live route's
+complete-line workflow, automatic opponent replies, scoring, and feedback.
+
+## Scope Discipline
+
+- Read the current implementation and tests before editing.
+- Run `git status --short` first. Existing changes belong to the user.
+- Never revert, overwrite, stage, or reformat unrelated changes.
+- Architecture work must preserve routes, UI, copy, layout, and behavior unless
+  the request explicitly includes a redesign.
+- Do not replace an existing component with a new visual design while refactoring
+  its internals.
+- Do not add duplicate titles, instructions, controls, metrics, or navigation.
+- Do not create speculative abstractions, adapters, content banks, or settings.
+- Keep edits within the requested subsystem. Note unrelated problems instead of
+  quietly fixing them.
+
+Before finishing, inspect the complete diff. Look specifically for unexpected
+UI churn, deleted tests, hardcoded styling, increased component size, and files
+outside the requested scope.
+
+## TypeScript Rules
+
+- Strict TypeScript is required.
+- Do not use `any`, `as any`, `Component<any>`, `unknown as T`, or `as never` to
+  silence an incompatible design.
+- Use discriminated unions, mapped interaction contracts, typed factories, and
+  runtime narrowing at heterogeneous boundaries.
+- Do not create one giant type with optional fields for every interaction.
+- Parse external data as `unknown`, validate it, then narrow it.
+- Keep response, public data, and private data connected by the interaction type.
+- Use structured APIs rather than parsing chess notation or stored data manually.
+
+## Chess Correctness
+
+- Use chess.js for legal moves, SAN parsing, UCI normalization, check, mate,
+  stalemate, draw, promotion, castling, and terminal states.
+- Never compare SAN directly with UCI.
+- Do not approximate legal king moves with a static attack map.
+- A prompt saying "adjacent king squares" must exclude castling.
+- Keep canonical square identity independent of orientation and rotation.
+- Board flipping or 90/270-degree rotation must change presentation only, never
+  the square reported by a click.
+- Handle promotion explicitly in move responses.
+- Preserve complete tactical lines and automatic opponent replies when migrating
+  Tactics; matching only the first move is not behavioral parity.
+
+## Svelte And UI Rules
+
+- Keep components near 150 lines. Split state, picker, metrics, or controls when a
+  component grows materially beyond that.
+- Unsubscribe stores and cancel timers, workers, engines, and async generations
+  during teardown.
+- Reactive props must remain reactive; do not capture only their initial values.
+- Use `TrainingModuleShell` once per exercise. Do not duplicate its Skip, Reset,
+  task, source, or feedback controls.
+- Follow `task -> commit -> feedback -> continue`.
+- Use one centered content width through `--content-width`.
+- Use `--training-board-size` for full training boards.
+- Keep layouts flat. Avoid cards inside cards and decorative empty containers.
+- Keep screens quiet by default; reveal secondary explanations progressively.
+- Use concise chess terminology. Glossary support explains unfamiliar terms.
+- Use SVG for icons and directional controls, not emoji or text-arrow substitutes.
+- Use CSS tokens without hardcoded fallback colors. Chess-square and piece colors
+  are the intentional exception.
+- Do not add board shadows.
+- Preserve touch, keyboard, and screen-reader behavior.
+
+Board Vision invariants:
+
+- Users may select one or several drill types; at least one remains active.
+- The selected mix persists per account and reloads on account change.
+- Name the Square supports white, black, 90-degree, and 270-degree views.
+- Canonical clicks remain correct in every orientation.
+- Multi-select drills use an explicit None action; do not provide a second empty
+  submission path.
+- None-answer rounds target approximately 15 percent.
+- Incorrect feedback reveals every missed and extra square clearly.
+
+## Testing Rules
+
+Tests are product contracts, not obstacles:
+
+- Never delete, weaken, skip, or rewrite a regression test merely to make a refactor
+  pass.
+- When behavior intentionally changes, replace old coverage with equal or stronger
+  coverage and explain why.
+- Parameterized tests count as multiple scenarios. Do not silently replace them
+  with one shallow assertion.
+- A button-label change is not proof that the board itself changed orientation.
+- Test observable behavior, persistence, account isolation, and late callbacks.
+
+Required regression coverage for the drill platform:
+
+- Canonical square clicks in white, black, 90-degree, and 270-degree views.
+- Single-selected-drill Continue and Skip.
+- No immediate drill repetition when alternatives exist.
+- Account switch and refresh persistence.
+- Skip versus Give up attempt semantics.
+- Assisted attempts excluded from mastery.
+- Correct visual answer reveal.
+- Stale generation and stale evaluation suppression.
+- Lazy-load and generation failures produce a retryable error.
+- SAN-to-UCI normalization, promotion, castling, and complete tactical lines.
+- Generated FEN validity, score bounds, stable fingerprints, and no public answer
+  leakage.
+
+## Verification And Reporting
+
+For normal code changes, run:
+
+```text
+npm run check
+npm test
+npm run build
+```
+
+Also manually exercise the affected route when interaction or layout changed.
+Check light and dark themes, narrow layouts, keyboard use, and horizontal overflow
+when relevant.
+
+Report exact results only from commands run against the current worktree:
+
+- Distinguish errors from warnings.
+- Do not claim persistence, code splitting, route migration, or behavioral parity
+  from compilation alone.
+- Do not call deferred work resolved.
+- Do not call a registry entry a migrated feature when no live route uses it.
+- If test totals decrease, identify every removed scenario and justify it.
+- State what was not tested.
+
+Completion requires a clean relevant diff, preserved regression coverage, no
+known behavioral regression, and truthful verification. Passing tests alone is
+not sufficient.

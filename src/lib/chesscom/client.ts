@@ -1,4 +1,3 @@
-import { Chess } from 'chess.js';
 import type { ChessComArchive, ChessComClient, ChessComPlayer, ChessComStats, ImportedChessComGame } from './types';
 
 const API_ROOT = 'https://api.chess.com/pub/player';
@@ -80,7 +79,6 @@ export function createChessComClient(fetchImpl: typeof fetch = fetch): ChessComC
 				const blackName = stringOrEmpty(black.username);
 				const color = whiteName.toLocaleLowerCase() === player ? 'w' : blackName.toLocaleLowerCase() === player ? 'b' : null;
 				if (!color) continue;
-				try { new Chess().loadPgn(item.pgn as string); } catch { continue; }
 				const pgnHash = await hashText(item.pgn as string);
 				games.push({
 					id: item.url as string,

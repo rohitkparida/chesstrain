@@ -1,8 +1,15 @@
 import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import { buildBoardSquares, getLegalMoves, getTerminalState, isTerminalState } from './board';
+import { STARTING_FEN } from './constants';
 
 describe('chess board helpers', () => {
+	it('defines a valid 8-rank starting FEN in STARTING_FEN constant', () => {
+		expect(() => new Chess(STARTING_FEN)).not.toThrow();
+		const game = new Chess(STARTING_FEN);
+		expect(game.fen()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+	});
+
 	it('builds black and side-to-move orientations from the top-left visual square', () => {
 		const blackToMove = new Chess('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1');
 		expect(buildBoardSquares(blackToMove, true)[0].name).toBe('h1');

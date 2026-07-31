@@ -1,5 +1,9 @@
 export type ThemePreference = 'system' | 'light' | 'dark';
 
+export function resolveThemePreference(preference: ThemePreference, prefersLight: boolean): 'light' | 'dark' {
+  return preference === 'light' || (preference === 'system' && prefersLight) ? 'light' : 'dark';
+}
+
 export interface UserProfile {
   displayName: string;
   chessComUsername: string;
@@ -9,7 +13,9 @@ export interface UserProfile {
   onboardingCompletedAt: number | null;
 }
 
-export const PROFILE_STORAGE_KEY = 'magnus_profile';
+import { PROFILE_STORAGE_KEY } from './keys';
+import { readScopedStorageItem } from '$lib/storage/localJsonStorage';
+export { PROFILE_STORAGE_KEY };
 
 export function defaultProfileFor(username: string): UserProfile {
 	if (username === GUEST_USERNAME) {
@@ -59,17 +65,9 @@ export const localProfileRepository: ProfileRepository = {
     const fallback = defaultProfileFor(username);
     if (typeof window === 'undefined') return fallback;
     try {
-      const scopedKey = `${PROFILE_STORAGE_KEY}:${username}`;
-      let raw = localStorage.getItem(scopedKey);
-      if (!raw && username === LOCAL_ACCOUNT_USERNAME) {
-        raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-        if (raw) {
-          localStorage.setItem(scopedKey, raw);
-          localStorage.removeItem(PROFILE_STORAGE_KEY);
-        }
-      }
+      const raw = readScopedStorageItem(PROFILE_STORAGE_KEY, username);
       if (!raw) return fallback;
-      const profile = sanitizeProfile(raw ? JSON.parse(raw) : null);
+      const profile = sanitizeProfile(JSON.parse(raw));
       if (!profile.displayName && !profile.chessComUsername) {
         return { ...fallback, theme: profile.theme };
       }

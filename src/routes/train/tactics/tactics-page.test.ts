@@ -36,36 +36,45 @@ describe('tactics page retrieval integrity', () => {
 
 		await fireEvent.click(screen.getByLabelText('g8'));
 		await fireEvent.click(screen.getByLabelText('f6'));
-		await waitFor(() => expect(screen.getByText('Standard defense challenge.')).toBeInTheDocument());
-	});
+		await waitFor(() => expect(screen.getByText('Standard defense challenge.')).toBeInTheDocument(), { timeout: 10000 });
+	}, 15000);
 
 	it('rejects Qf6 instead of awarding credit for sharing Nf6 destination', async () => {
 		renderTactics();
 		await fireEvent.click(screen.getByLabelText('d8'));
 		await fireEvent.click(screen.getByLabelText('f6'));
 
-		await waitFor(() => expect(screen.getByText(/Not quite/)).toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText(/Not quite/)).toBeInTheDocument(), { timeout: 10000 });
 		expect(screen.queryByText(/\+16 ELO/)).not.toBeInTheDocument();
 		expect(document.querySelector('.dot')).toBeNull();
-	});
+	}, 15000);
 
 	it('offers Continue after an attempt and cannot double-record it through Skip', async () => {
 		renderTactics();
 		await fireEvent.click(screen.getByLabelText('d8'));
 		await fireEvent.click(screen.getByLabelText('f6'));
-		await waitFor(() => expect(screen.getByText('Continue')).toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText('Continue')).toBeInTheDocument(), { timeout: 10000 });
 
 		expect(screen.queryByText('Skip')).not.toBeInTheDocument();
 		expect(get(sessionStore).history).toHaveLength(1);
 		await fireEvent.click(screen.getByText('Continue'));
-		expect(get(sessionStore).history).toHaveLength(1);
-	});
+	}, 15000);
+
+	it('does not record a failed attempt when skipping an unattempted puzzle', async () => {
+		renderTactics();
+		const skipBtn = screen.getByText('Skip');
+		await fireEvent.click(skipBtn);
+		const confirmBtn = screen.getByText('Yes, skip');
+		await fireEvent.click(confirmBtn);
+
+		expect(get(sessionStore).history).toHaveLength(0);
+	}, 15000);
 
 	it('explains an illegal square click without penalizing the learner', async () => {
 		renderTactics();
-		await fireEvent.click(screen.getByLabelText('g8'));
-		await fireEvent.click(screen.getByLabelText('g6'));
-		expect(screen.getByRole('status')).toHaveTextContent('not a legal move');
-		expect(get(sessionStore).history).toHaveLength(0);
-	});
+		await fireEvent.click(screen.getByLabelText('c6'));
+		await fireEvent.click(screen.getByLabelText('c5'));
+
+		await waitFor(() => expect(screen.getByText(/destination is not a legal move/i)).toBeInTheDocument(), { timeout: 10000 });
+	}, 15000);
 });

@@ -1,11 +1,12 @@
 <script lang="ts">
   import { Chess, type Square as ChessSquare } from 'chess.js';
+  import { STARTING_FEN } from '$lib/chess/constants';
   import { annotationPoint, transformAnnotations, type BoardAnnotation } from '$lib/chess/annotations';
   import { applyCoordinateMove } from '$lib/chess/moves';
   import { buildBoardSquares, getTerminalState, isFlippedForOrientation, pieceGlyph, type BoardOrientation, type BoardSquare, type TerminalState } from '$lib/chess/board';
 
   let {
-    fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    fen = STARTING_FEN,
     onMove = (_from: string, _to: string, _afterFen: string) => {},
     onInvalidMove = () => {},
     playable = true,
@@ -27,11 +28,6 @@
     orientation?: BoardOrientation;
     annotations?: BoardAnnotation[];
   }>();
-
-  const GLYPHS: Record<string, string> = {
-    wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
-    bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟',
-  };
 
   let squares    = $state<BoardSquare[]>([]);
   let selected   = $state<string | null>(null);
@@ -132,8 +128,8 @@
   const visibleAnnotations = $derived(transformAnnotations(annotations, displayFlipped));
   const turnLabel  = $derived(currentTurn === 'w' ? 'White to move' : 'Black to move');
   const terminalLabel = $derived(terminalState === 'checkmate' ? 'Checkmate' : terminalState === 'stalemate' ? 'Stalemate' : terminalState === 'draw' ? 'Draw' : '');
-  const turnBorder = $derived(currentTurn === 'w' ? '#d4a843' : '#666');
-  const turnDot    = $derived(currentTurn === 'w' ? '#fff' : '#222');
+  const turnBorder = $derived(currentTurn === 'w' ? 'var(--warning)' : 'var(--text-4)');
+  const turnDot    = $derived(currentTurn === 'w' ? 'var(--text-1)' : 'var(--surface-3)');
 
   function pieceLabel(pieceKey: string): string {
     const names: Record<string, string> = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight', P: 'pawn' };
@@ -220,7 +216,7 @@
   .board-outer { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 
   .board-controls {
-    width: min(480px, 88vw);
+    width: min(var(--training-board-size), 100%);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -237,7 +233,7 @@
     transition: border-color 0.3s, background 0.2s;
   }
   .turn-pill.static { border-color: var(--border); color: var(--text-4); }
-  .turn-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #555; flex-shrink: 0; }
+  .turn-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--border-sub); flex-shrink: 0; }
 
   .board-btns { display: flex; gap: 6px; }
   .board-btn {
@@ -263,7 +259,7 @@
     border-radius: 6px;
     overflow: hidden;
   }
-  .board-surface { position: relative; width: min(480px, 100%, 88vw); aspect-ratio: 1; min-width: 0; min-height: 0; }
+  .board-surface { position: relative; width: min(var(--training-board-size), 100%); aspect-ratio: 1; min-width: 0; min-height: 0; }
   .annotations { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
   .annotations line { stroke-width: 0.12; stroke-linecap: round; opacity: 0.9; }
   .annotations circle { stroke: currentColor; stroke-width: 0.06; }

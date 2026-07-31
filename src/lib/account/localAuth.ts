@@ -8,10 +8,13 @@ export const LOCAL_ACCOUNTS: LocalAccountDefinition[] = [
   { username: 'shawttybad', chessComUsername: 'shawttybad' }
 ];
 
+import { LOCAL_AUTH_SESSION_KEY } from './keys';
+import { readScopedStorageItem } from '$lib/storage/localJsonStorage';
+export { LOCAL_AUTH_SESSION_KEY };
+
 export const LOCAL_ACCOUNT_USERNAME = LOCAL_ACCOUNTS[0].username;
 export const GUEST_USERNAME = 'guest';
 export const LOCAL_CREDENTIAL_KEY = 'magnus_local_credential';
-export const LOCAL_AUTH_SESSION_KEY = 'magnus_local_authenticated';
 
 const PASSWORD_ITERATIONS = 210_000;
 const MIN_PASSWORD_LENGTH = 8;
@@ -104,19 +107,8 @@ function ensureDefaultCredentials(): void {
 function readCredential(username: string): LocalCredential | null {
   if (typeof window === 'undefined' || !isKnownAccount(username)) return null;
   ensureDefaultCredentials();
-  const scopedKey = credentialKey(username);
-  const scoped = parseCredential(localStorage.getItem(scopedKey), username);
-  if (scoped) return scoped;
-
-  if (username === LOCAL_ACCOUNT_USERNAME) {
-    const legacy = parseCredential(localStorage.getItem(LOCAL_CREDENTIAL_KEY), username);
-    if (legacy) {
-      localStorage.setItem(scopedKey, JSON.stringify(legacy));
-      localStorage.removeItem(LOCAL_CREDENTIAL_KEY);
-      return legacy;
-    }
-  }
-  return null;
+  const raw = readScopedStorageItem(LOCAL_CREDENTIAL_KEY, username);
+  return parseCredential(raw, username);
 }
 
 async function deriveHash(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
