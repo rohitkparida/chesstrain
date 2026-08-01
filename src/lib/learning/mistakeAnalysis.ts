@@ -4,7 +4,7 @@ import type { ImportedChessComGame, MistakeKind, PersonalMistakeExercise } from 
 import { mistakeExerciseId } from '$lib/chesscom/types';
 import { extractGameMoves, type GameMoveCandidate } from './gameMistakes';
 
-export const MISTAKE_ANALYSIS_VERSION = 'stockfish-v2';
+export const MISTAKE_ANALYSIS_VERSION = 'stockfish-v3';
 export const QUICK_ANALYSIS_MS = 50;
 export const VERIFY_ANALYSIS_MS = 750;
 export const QUICK_THRESHOLD_CP = 60;
@@ -68,6 +68,8 @@ export function mistakeKind(before: EngineEval, after: EngineEval, lossCp: numbe
 
 export function isPuzzleWorthy(analysis: AnalyzedMove, verificationStatus: 'provisional' | 'verified'): boolean {
 	if (!analysis.before.bestMove || analysis.before.principalVariation.length === 0) return false;
+	// Opening moves (<= Move 5) are standard development/book choices and should not be tactics puzzles
+	if (analysis.candidate.moveNumber <= 5) return false;
 	if (isTrivialHangingPieceBlunder(analysis.candidate)) return false;
 	const playedMove = `${analysis.candidate.move.from}${analysis.candidate.move.to}${analysis.candidate.move.promotion ?? ''}`;
 	if (analysis.before.bestMove === playedMove) return false;

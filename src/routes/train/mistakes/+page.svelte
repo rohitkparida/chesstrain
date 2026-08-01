@@ -198,6 +198,8 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
 
   function savedMistakeToReview(exercise: PersonalMistakeExercise): Mistake | null {
     if (exercise.verificationStatus === 'discarded') return null;
+    if (exercise.ply <= 10) return null; // Exclude opening moves (<= Move 5)
+    if (exercise.lossCp < 150) return null; // Exclude minor < 1.5 pawn losses from old cache
     const board = new Chess(exercise.fen);
     let played = null;
     if (exercise.playedMove && exercise.playedMove.length >= 4) {
