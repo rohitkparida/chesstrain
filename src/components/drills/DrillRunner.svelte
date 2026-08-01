@@ -226,17 +226,11 @@
           <div class="action-bar">
             {#if runnerState.status === 'active' && !sprintComplete}
               <button type="button" class="btn-text" onclick={() => runner.giveUp()}>Give up & show answer</button>
-            {:else if runnerState.status === 'feedback' || sprintComplete}
-              <div class="feedback-badge" class:correct={sprintComplete ? sprintCorrect > 0 : runnerState.assessment?.correct} class:incorrect={sprintComplete ? sprintCorrect === 0 : !runnerState.assessment?.correct}>
-                <span class="feedback-msg">
-                  {sprintComplete
-                    ? `Time up! Final score: ${sprintCorrect}/${sprintAttempts} (${sprintAttempts > 0 ? Math.round((sprintCorrect / sprintAttempts) * 100) : 0}%) · Best Streak: ${sprintBestStreak}`
-                    : (runnerState.assessment?.feedback ?? '')}
-                </span>
+            {:else if runnerState.status === 'feedback' && !sprintComplete}
+              <div class="feedback-badge" class:correct={runnerState.assessment?.correct} class:incorrect={!runnerState.assessment?.correct}>
+                <span class="feedback-msg">{runnerState.assessment?.feedback ?? ''}</span>
               </div>
-              {#if !sprintComplete}
-                <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
-              {/if}
+              <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
             {/if}
           </div>
 
