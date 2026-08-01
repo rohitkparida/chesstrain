@@ -17,12 +17,19 @@ import { createIndexedDbMistakeRepository } from '$lib/chesscom/repository';
 import type { PersonalMistakeExercise } from '$lib/chesscom/types';
 import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
 
+  import { authStore } from '../../../stores/auth';
+
   type Mistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
 
   function getInitialMistakesData() {
     if (typeof window === 'undefined') {
       return { mistakes: [] as Mistake[], username: '', status: 'Load your public games or paste a PGN to begin.' };
     }
+    const auth = get(authStore);
+    if (!auth.authenticated || auth.guest) {
+      return { mistakes: [] as Mistake[], username: '', status: 'Load your public games or paste a PGN to begin.' };
+    }
+
     const userId = get(sessionStore).userId ?? 'local-player';
     let loadedMistakes: Mistake[] = [];
 
@@ -192,7 +199,15 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   function savedMistakeToReview(exercise: PersonalMistakeExercise): Mistake | null {
     if (exercise.verificationStatus === 'discarded') return null;
     const board = new Chess(exercise.fen);
-    const played = board.move({ from: exercise.playedMove.slice(0, 2), to: exercise.playedMove.slice(2, 4), promotion: exercise.playedMove[4] as 'q' | 'r' | 'b' | 'n' | undefined });
+    let played = null;
+    if (exercise.playedMove && exercise.playedMove.length >= 4) {
+      try {
+        played = board.move({ from: exercise.playedMove.slice(0, 2), to: exercise.playedMove.slice(2, 4), promotion: (exercise.playedMove[4] as 'q' | 'r' | 'b' | 'n' | undefined) || 'q' });
+      } catch {}
+    }
+    if (!played && exercise.playedSan) {
+      try { played = board.move(exercise.playedSan); } catch {}
+    }
     if (!played) return null;
     return { ply: exercise.ply, moveNumber: Math.ceil(exercise.ply / 2), color: played.color, move: played, fen: exercise.fen, afterFen: exercise.afterFen, bestMove: exercise.bestMove, loss: exercise.lossCp, gameId: exercise.gameId };
   }
@@ -345,6 +360,13 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     localStorage.setItem(mistakeCacheKey(userId), serializeMistakes(userId, username, mistakes));
   }
   onMount(() => {
+    const auth = get(authStore);
+    if (!auth.authenticated || auth.guest) {
+      username = '';
+      mistakes = [];
+      status = 'Load your public games or paste a PGN to begin.';
+      return;
+    }
     const userId = get(sessionStore).userId ?? 'local-player';
     const cached = parseCachedMistakes<Mistake>(localStorage.getItem(mistakeCacheKey(userId)), userId);
     if (cached) { username = cached.username; mistakes = cached.mistakes; status = `Loaded ${mistakes.length} saved mistake${mistakes.length === 1 ? '' : 's'}.`; precalculateUpcoming(0); }
@@ -392,7 +414,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       <ActionButton variant="quiet" onclick={cancelAnalysis}>Pause</ActionButton>
     </div>
   {/if}
-  {#if mistakes.length > 0 && !analyzing && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<div class="review-actions">{#if !activeAttempted}<ActionButton variant="quiet" onclick={giveUp}>Give up</ActionButton>{/if}<ActionButton variant="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</ActionButton></div>{/if}
+  {#if mistakes.length > 0 && !reviewFinished}<div class="puzzle-head"><strong>Position {active + 1} of {mistakes.length}</strong><span>Find the move that improves your position.</span></div>{#if mistakes[active]}<ChessBoard fen={mistakes[active].fen} orientation={mistakes[active].color === 'b' ? 'black' : 'white'} onMove={handleMove} showUndo={false} />{/if}{#if feedback}<p class="feedback" role="status">{feedback}</p>{/if}<div class="review-actions">{#if !activeAttempted}<ActionButton variant="quiet" onclick={giveUp}>Give up</ActionButton>{/if}<ActionButton variant="primary" onclick={nextMistake} disabled={!feedback}>{active === mistakes.length - 1 ? 'Finish review' : 'Next position'}</ActionButton></div>{/if}
   {#if reviewFinished}<div class="review-complete"><p class="feedback" role="status">{feedback}</p><div class="row"><ActionButton variant="primary" onclick={reviewAgain}>Review again</ActionButton><ActionButton variant="quiet" onclick={analyzeNewerGames}>Analyze newer games</ActionButton></div></div>{/if}
   {#if replayReady && mistakes[active]}
     <MistakeReplayBoard fen={mistakes[active].fen} arrows={[{ from: mistakes[active].move.from, to: mistakes[active].move.to, tone: 'played' }, { from: mistakes[active].bestMove.slice(0, 2), to: mistakes[active].bestMove.slice(2, 4), tone: 'engine' }]} continuation={replay} step={replayStep} onNext={advanceReplay} />
