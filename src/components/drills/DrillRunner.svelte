@@ -140,7 +140,7 @@
           {#if isGraceRound}
             <div class="grace-notice">Grace Round — Mode switch warm-up (Points unrated)</div>
           {/if}
-          <CountdownBar {durationMs} active={isTimerActive} onTimeout={handleTimerTimeout} />
+          <CountdownBar {durationMs} active={isTimerActive} resetOnAttempt={timerMode === 'per-attempt'} onTimeout={handleTimerTimeout} />
 
           <div class="board-area">
             {#if activeAdapter}

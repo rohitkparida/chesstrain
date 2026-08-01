@@ -4,7 +4,8 @@
 	import ChessBoard from '../../ChessBoard.svelte';
 	import ActionButton from '../../ActionButton.svelte';
 	import { buildBoardSquares, pieceGlyph, type BoardSquare } from '$lib/chess/board';
-	import { buildFenFromMap, parseBoardPieces } from '$lib/drills/vision/boardMemory';
+	import { buildFenFromMap, parseBoardPieces, generateRandomPosition } from '$lib/drills/vision/boardMemory';
+	import type { BoardMemoryLevel } from '$lib/drills/types';
 
 	let {
 		data,
@@ -17,6 +18,7 @@
 			memorizeSeconds?: number;
 			orientation?: 'white' | 'black' | 'side-to-move';
 			pieceCount?: number;
+			level?: BoardMemoryLevel;
 		};
 		reveal?: unknown;
 		disabled?: boolean;
@@ -24,20 +26,31 @@
 	}>();
 
 	let phase = $state<'memorize' | 'reconstruct'>('memorize');
+	let activeLevel = $state<BoardMemoryLevel>('adaptive');
+	let activeFen = $state('');
+	let activePieceCount = $state(4);
+
 	let remainingMs = $state(3000);
 	let selectedPiece = $state<string | null>('P');
 	let userMap = $state(new Map<string, { type: PieceSymbol; color: Color }>());
 	let timerId: number | null = null;
 	let startTime: number | null = null;
 
+	const LEVEL_PRESETS: { id: BoardMemoryLevel; label: string; count: number | null }[] = [
+		{ id: 'adaptive', label: 'Adaptive', count: null },
+		{ id: 'beginner', label: 'Beginner', count: 4 },
+		{ id: 'intermediate', label: 'Intermediate', count: 6 },
+		{ id: 'advanced', label: 'Advanced', count: 10 }
+	];
+
 	const memorizeSeconds = $derived(data.memorizeSeconds ?? 3);
 	const targetDurationMs = $derived(memorizeSeconds * 1000);
 	const percent = $derived(Math.max(0, Math.min(100, (remainingMs / targetDurationMs) * 100)));
 	const boardOrientation = $derived(data.orientation === 'black' ? 'black' : 'white');
 	const userFen = $derived(buildFenFromMap(userMap));
-	const displayFen = $derived(reveal ? data.fen : userFen);
+	const displayFen = $derived(reveal ? activeFen : userFen);
 	const isFlipped = $derived(boardOrientation === 'black');
-	const boardSquares = $derived(buildBoardSquaresFromMap(userMap, data.fen, Boolean(reveal), isFlipped));
+	const boardSquares = $derived(buildBoardSquaresFromMap(userMap, activeFen, Boolean(reveal), isFlipped));
 
 	const WHITE_PALETTE = [
 		{ type: 'P', icon: '♙', label: 'White Pawn' },
@@ -94,6 +107,35 @@
 		data.fen;
 		resetDrillState();
 	});
+
+	onMount(() => {
+		try {
+			const saved = localStorage.getItem('board_memory_level_preset');
+			if (saved && ['adaptive', 'beginner', 'intermediate', 'advanced'].includes(saved)) {
+				selectLevel(saved as BoardMemoryLevel);
+			}
+		} catch {}
+	});
+
+	function selectLevel(level: BoardMemoryLevel) {
+		activeLevel = level;
+		try {
+			localStorage.setItem('board_memory_level_preset', level);
+		} catch {}
+
+		if (level === 'adaptive') {
+			activeFen = data.fen;
+			activePieceCount = data.pieceCount ?? 4;
+		} else {
+			const preset = LEVEL_PRESETS.find((p) => p.id === level);
+			if (preset?.count) {
+				const generated = generateRandomPosition(preset.count);
+				activeFen = generated.fen;
+				activePieceCount = generated.pieceCount;
+			}
+		}
+		resetDrillState();
+	}
 
 	function resetDrillState() {
 		stopTimer();
@@ -170,10 +212,25 @@
 </script>
 
 <div class="board-memory-container">
+	<div class="level-tabs" role="tablist" aria-label="Board Memory difficulty tabs">
+		{#each LEVEL_PRESETS as preset (preset.id)}
+			<button
+				type="button"
+				class="tab-btn"
+				class:active={activeLevel === preset.id}
+				onclick={() => selectLevel(preset.id)}
+				role="tab"
+				aria-selected={activeLevel === preset.id}
+			>
+				{preset.label}{preset.count ? ` (${preset.count})` : ''}
+			</button>
+		{/each}
+	</div>
+
 	{#if phase === 'memorize'}
 		<div class="memorize-header">
 			<div class="memorize-copy">
-				<span class="memorize-title">Memorize Position ({data.pieceCount ?? 4} pieces)</span>
+				<span class="memorize-title">Memorize Position ({activePieceCount} pieces)</span>
 				<span class="memorize-sub">Board hides in {(remainingMs / 1000).toFixed(1)}s</span>
 			</div>
 			<ActionButton variant="quiet" onclick={transitionToReconstruct}>I'm ready &rarr;</ActionButton>
@@ -183,7 +240,7 @@
 			<div class="countdown-fill" style="width: {percent}%;"></div>
 		</div>
 
-		<ChessBoard fen={data.fen} orientation={boardOrientation} showUndo={false} showControls={false} />
+		<ChessBoard fen={activeFen} orientation={boardOrientation} showUndo={false} showControls={false} />
 	{:else}
 		<div class="reconstruct-header">
 			<span class="reconstruct-title">{reveal ? 'Actual Position Revealed' : 'Place the pieces on the board'}</span>
@@ -265,6 +322,39 @@
 		width: 100%;
 		max-width: var(--training-board-size, 480px);
 		margin: 0 auto;
+	}
+	.level-tabs {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		background: var(--surface-2);
+		padding: 0.25rem;
+		border-radius: 8px;
+		border: 1px solid var(--border);
+		margin-bottom: 0.2rem;
+		overflow-x: auto;
+	}
+	.tab-btn {
+		flex: 1;
+		font-size: 0.76rem;
+		font-weight: 600;
+		padding: 0.3rem 0.5rem;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-3);
+		cursor: pointer;
+		white-space: nowrap;
+		transition: all 0.12s ease;
+	}
+	.tab-btn:hover {
+		color: var(--text-1);
+		background: var(--surface-3);
+	}
+	.tab-btn.active {
+		color: var(--text-1);
+		background: var(--surface-1);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 	.memorize-header,
 	.reconstruct-header {

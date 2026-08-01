@@ -1,5 +1,5 @@
 import { Chess, type PieceSymbol, type Color } from 'chess.js';
-import type { DrillDefinition, DrillContext, GeneratedDrill, DrillAssessment, AssistanceLevel, BoardReconstructData, BoardReconstructResponse } from '../types';
+import type { DrillDefinition, DrillContext, GeneratedDrill, DrillAssessment, AssistanceLevel, BoardReconstructData, BoardReconstructResponse, BoardMemoryLevel } from '../types';
 import { FILES } from '$lib/chess/board';
 
 const DRILL_ID = 'vision.board-memory';
@@ -79,6 +79,13 @@ export function targetPieceCount(difficulty: number): number {
 	if (difficulty <= 600) return 6;
 	if (difficulty <= 900) return 9;
 	return 12;
+}
+
+export function pieceCountForLevel(level?: BoardMemoryLevel, difficulty = 0): number {
+	if (level === 'beginner') return 4;
+	if (level === 'intermediate') return 6;
+	if (level === 'advanced') return 10;
+	return targetPieceCount(difficulty);
 }
 
 export function parseBoardPieces(fen: string): Map<string, { type: PieceSymbol; color: Color }> {

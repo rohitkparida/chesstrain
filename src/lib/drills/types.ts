@@ -32,11 +32,14 @@ export interface MoveResponse {
   uci: string;
 }
 
+export type BoardMemoryLevel = 'adaptive' | 'beginner' | 'intermediate' | 'advanced';
+
 export interface BoardReconstructData {
   fen: string;
   memorizeSeconds?: number;
   orientation?: SquareOrientation;
   pieceCount?: number;
+  level?: BoardMemoryLevel;
 }
 
 export interface BoardReconstructResponse {

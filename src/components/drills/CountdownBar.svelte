@@ -4,16 +4,27 @@
 	let {
 		durationMs = 60000,
 		active = false,
+		resetOnAttempt = false,
 		onTimeout
 	} = $props<{
 		durationMs?: number;
 		active?: boolean;
+		resetOnAttempt?: boolean;
 		onTimeout?: () => void;
 	}>();
 
 	let remainingMs = $state(60000);
 	let animationFrameId: number | null = null;
 	let startTime: number | null = null;
+	let startRemainingMs = $state(60000);
+
+	$effect(() => {
+		durationMs;
+		if (resetOnAttempt) {
+			remainingMs = durationMs;
+			startRemainingMs = durationMs;
+		}
+	});
 
 	const percent = $derived(Math.max(0, Math.min(100, (remainingMs / durationMs) * 100)));
 	const colorClass = $derived(
@@ -25,19 +36,25 @@
 			startCountdown();
 		} else {
 			stopCountdown();
-			remainingMs = durationMs;
+			if (resetOnAttempt) {
+				remainingMs = durationMs;
+			}
 		}
 	});
 
 	function startCountdown() {
 		stopCountdown();
 		startTime = performance.now();
-		remainingMs = durationMs;
+		if (resetOnAttempt) {
+			startRemainingMs = durationMs;
+		} else {
+			startRemainingMs = remainingMs > 0 ? remainingMs : durationMs;
+		}
 
 		const tick = (now: number) => {
 			if (!startTime) return;
 			const elapsed = now - startTime;
-			const currentRemaining = Math.max(0, durationMs - elapsed);
+			const currentRemaining = Math.max(0, startRemainingMs - elapsed);
 			remainingMs = currentRemaining;
 
 			if (currentRemaining > 0) {
