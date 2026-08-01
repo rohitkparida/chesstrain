@@ -27,11 +27,36 @@
   }>();
 
   let isGraceRound = $state(false);
-  let initializedMode = false;
+  let timerMode = $state<TimerMode>('session');
+  let difficultyOffset = $state(0);
+  let sprintComplete = $state(false);
+  let sprintAttempts = $state(0);
+  let sprintCorrect = $state(0);
+  let sprintBestStreak = $state(0);
+  let currentSprintStreak = $state(0);
+
+  function resetSprintStats() {
+    sprintAttempts = 0;
+    sprintCorrect = 0;
+    sprintBestStreak = 0;
+    currentSprintStreak = 0;
+  }
 
   const runner = new DrillRunnerMachine<K>({
     onRecordAttempt: (evt) => {
       if (!isGraceRound) {
+        if (timerMode === 'session' && !sprintComplete) {
+          sprintAttempts++;
+          if (evt.correct) {
+            sprintCorrect++;
+            currentSprintStreak++;
+            if (currentSprintStreak > sprintBestStreak) {
+              sprintBestStreak = currentSprintStreak;
+            }
+          } else {
+            currentSprintStreak = 0;
+          }
+        }
         onRecordAttempt?.(evt);
       }
     }
@@ -72,11 +97,14 @@
     runner.submit(response as InteractionContracts[K]['response']);
   }
 
+  let initializedMode = false;
+
   function handleModeChange(newMode: TimerMode) {
     if (initializedMode) {
       isGraceRound = true;
     }
     initializedMode = true;
+    resetSprintStats();
   }
 
   function handleSkip() {
@@ -103,10 +131,6 @@
     return orientationOverride ? { ...pub, orientation: orientationOverride } : pub;
   });
 
-  let timerMode = $state<TimerMode>('session');
-  let difficultyOffset = $state(0);
-  let sprintComplete = $state(false);
-
   const timerConfig = $derived(getTimerConfig(timerMode, 3, difficultyOffset));
   const durationMs = $derived(timerMode === 'session' ? 60000 : timerConfig.perAttemptSeconds * 1000);
   const isTimerActive = $derived(runnerState.status === 'active' && timerMode !== 'none' && !isLoading && !sprintComplete);
@@ -122,6 +146,7 @@
 
   function restartSprint() {
     sprintComplete = false;
+    resetSprintStats();
     handleContinue();
   }
 </script>
@@ -156,7 +181,20 @@
               <div class="sprint-summary-header">
                 <span class="sprint-title">🏁 60-Second Sprint Complete!</span>
               </div>
-              <p class="sprint-subtext">Review your final sprint score below.</p>
+              <div class="sprint-score-grid">
+                <div class="score-stat">
+                  <span class="stat-value">{sprintCorrect} / {sprintAttempts}</span>
+                  <span class="stat-label">Solved</span>
+                </div>
+                <div class="score-stat">
+                  <span class="stat-value">{sprintAttempts > 0 ? Math.round((sprintCorrect / sprintAttempts) * 100) : 0}%</span>
+                  <span class="stat-label">Accuracy</span>
+                </div>
+                <div class="score-stat">
+                  <span class="stat-value">{sprintBestStreak}</span>
+                  <span class="stat-label">Best Streak</span>
+                </div>
+              </div>
               <ActionButton variant="primary" onclick={restartSprint}>Start New 60s Sprint &rarr;</ActionButton>
             </div>
           {/if}
@@ -250,10 +288,28 @@
     font-weight: 700;
     color: var(--text-1);
   }
-  .sprint-subtext {
-    font-size: 0.82rem;
-    color: var(--text-3);
-    margin: 0;
+  .sprint-score-grid {
+    display: flex;
+    justify-content: center;
+    gap: 1.75rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+  .score-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .score-stat .stat-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .score-stat .stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
   .drill-body {
     display: flex;
