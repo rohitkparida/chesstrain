@@ -7,8 +7,7 @@
   }>();
 </script>
 
-<section class="instruction-banner" aria-labelledby="task-title">
-  <span class="task-label" id="task-title">Task</span>
+<section class="instruction-banner" aria-label="Task instructions">
   <div class="copy">
     <HighlightedInstruction text={title} {keywords} />
     {#if hint}<span class="hint">{hint}</span>{/if}
@@ -24,7 +23,6 @@
     border-bottom: 1px solid var(--border);
     font-size: 0.84rem;
   }
-  .task-label { flex: 0 0 auto; color: var(--text-4); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .copy { display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; }
   .hint {
     color: var(--text-4);

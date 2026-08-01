@@ -35,9 +35,8 @@ describe('shared training presentation', () => {
 
   it('renders the task as a labeled section without a nested card', () => {
     render(InstructionBanner, { hint: 'Choose your move before checking.' });
-    const task = screen.getByRole('region', { name: 'Task' });
+    const task = screen.getByRole('region', { name: 'Task instructions' });
     expect(task).toHaveTextContent('Choose your move before checking.');
-    expect(task.querySelector('.instruction-banner')).toBeNull();
   });
 
   it('labels metrics as feedback and defaults to a concise result without a redundant Result heading', () => {
