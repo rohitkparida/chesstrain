@@ -26,8 +26,15 @@
     onRecordAttempt?: (event: AttemptRecordEvent<K>) => void;
   }>();
 
+  let isGraceRound = $state(false);
+  let initializedMode = false;
+
   const runner = new DrillRunnerMachine<K>({
-    onRecordAttempt: (evt) => onRecordAttempt?.(evt)
+    onRecordAttempt: (evt) => {
+      if (!isGraceRound) {
+        onRecordAttempt?.(evt);
+      }
+    }
   });
 
   let runnerState: RunnerState<K> = $state(runner.getState());
@@ -65,12 +72,21 @@
     runner.submit(response as InteractionContracts[K]['response']);
   }
 
+  function handleModeChange(newMode: TimerMode) {
+    if (initializedMode) {
+      isGraceRound = true;
+    }
+    initializedMode = true;
+  }
+
   function handleSkip() {
+    isGraceRound = false;
     runner.skip();
     if (onNextDrill) onNextDrill(); else loadAndGenerate();
   }
 
   function handleContinue() {
+    isGraceRound = false;
     if (onNextDrill) onNextDrill(); else loadAndGenerate();
   }
 
@@ -119,8 +135,11 @@
       {#snippet children()}
         <div class="drill-body" class:is-loading={isLoading}>
           <div class="timer-bar-row">
-            <DrillTimerControls bind:mode={timerMode} {difficultyOffset} />
+            <DrillTimerControls bind:mode={timerMode} {difficultyOffset} onModeChange={handleModeChange} />
           </div>
+          {#if isGraceRound}
+            <div class="grace-notice">Grace Round — Mode switch warm-up (Points unrated)</div>
+          {/if}
           <CountdownBar {durationMs} active={isTimerActive} onTimeout={handleTimerTimeout} />
 
           <div class="board-area">
@@ -185,6 +204,16 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
+  }
+  .grace-notice {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    text-align: center;
   }
   .drill-body {
     display: flex;
