@@ -32,6 +32,17 @@ export interface MoveResponse {
   uci: string;
 }
 
+export interface BoardReconstructData {
+  fen: string;
+  memorizeSeconds?: number;
+  orientation?: SquareOrientation;
+  pieceCount?: number;
+}
+
+export interface BoardReconstructResponse {
+  placedFen: string;
+}
+
 export interface InteractionContracts {
   'square-tap': {
     public: SquareTapData;
@@ -52,6 +63,11 @@ export interface InteractionContracts {
     public: MoveData;
     private: { solutionUcis: string[]; FEN: string };
     response: MoveResponse;
+  };
+  'board-reconstruct': {
+    public: BoardReconstructData;
+    private: { targetFen: string; pieceCount: number };
+    response: BoardReconstructResponse;
   };
 }
 

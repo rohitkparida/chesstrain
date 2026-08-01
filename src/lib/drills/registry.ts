@@ -49,6 +49,14 @@ export const DRILLS: Record<string, LazyDrillEntry> = {
     interaction: 'square-select',
     load: () => import('./vision/safeKingSquares').then((m) => m.drill)
   },
+  'vision.board-memory': {
+    id: 'vision.board-memory',
+    module: 'board-grip',
+    label: 'Board Memory',
+    description: 'Memorize the position and reconstruct the board.',
+    interaction: 'board-reconstruct',
+    load: () => import('./vision/boardMemory').then((m) => m.drill)
+  },
   'tactics.random': {
     id: 'tactics.random',
     module: 'tactics',
