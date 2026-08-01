@@ -26,6 +26,8 @@
   let streak = $state(0);
   let bestStreak = $state(0);
   let totalCorrectTimeMs = $state(0);
+  let lastSprintScore = $state<string | null>(null);
+  let bestSprintScore = $state<string | null>(null);
 
   const unsubscribe = sessionStore.subscribe((state) => {
     const nextUser = state.userId ?? 'guest';
@@ -148,6 +150,8 @@
 
   <ObjectiveMetrics
     items={[
+      ...(lastSprintScore ? [{ label: 'Last Sprint', value: lastSprintScore }] : []),
+      ...(bestSprintScore ? [{ label: 'Best Sprint', value: bestSprintScore }] : []),
       { label: 'Attempts', value: String(attempts) },
       { label: 'Accuracy', value: `${accuracy}%` },
       { label: 'Avg Speed', value: avgSpeedSec === '-' ? '-' : `${avgSpeedSec}s` },

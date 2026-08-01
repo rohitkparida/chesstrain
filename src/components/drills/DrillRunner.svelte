@@ -34,6 +34,8 @@
   let sprintCorrect = $state(0);
   let sprintBestStreak = $state(0);
   let currentSprintStreak = $state(0);
+  let bestSprintCorrect = $state(0);
+  let bestSprintScore = $state<string | null>(null);
 
   function resetSprintStats() {
     sprintAttempts = 0;
@@ -138,6 +140,10 @@
   function handleTimerTimeout() {
     if (timerMode === 'session') {
       sprintComplete = true;
+      if (sprintCorrect > bestSprintCorrect || !bestSprintScore) {
+        bestSprintCorrect = sprintCorrect;
+        bestSprintScore = `${sprintCorrect} / ${sprintAttempts}`;
+      }
     }
     if (runnerState.status === 'active') {
       runner.giveUp();
@@ -184,7 +190,11 @@
               <div class="sprint-score-grid">
                 <div class="score-stat">
                   <span class="stat-value">{sprintCorrect} / {sprintAttempts}</span>
-                  <span class="stat-label">Solved</span>
+                  <span class="stat-label">Last Sprint</span>
+                </div>
+                <div class="score-stat">
+                  <span class="stat-value">{bestSprintScore ?? `${sprintCorrect} / ${sprintAttempts}`}</span>
+                  <span class="stat-label">Best Sprint</span>
                 </div>
                 <div class="score-stat">
                   <span class="stat-value">{sprintAttempts > 0 ? Math.round((sprintCorrect / sprintAttempts) * 100) : 0}%</span>
