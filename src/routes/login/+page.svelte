@@ -73,7 +73,7 @@
   <div class="guest-divider"><span>or</span></div>
   <ActionButton variant="quiet" type="button" onclick={continueAsGuest}>Continue as guest</ActionButton>
 
-
+  <p class="account-notice">Registration is currently invite-only. Contact me to request access.</p>
 </main>
 
 <style>
@@ -86,4 +86,5 @@
   .guest-divider { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0 0.65rem; color: var(--text-5); font-size: 0.75rem; }
   .guest-divider::before, .guest-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
   .guest-divider span { padding: 0 0.25rem; }
+  .account-notice { border-top: 1px solid var(--border); margin-top: 1.8rem; padding-top: 1rem; color: var(--text-5); font-size: 0.76rem; line-height: 1.45; }
 </style>

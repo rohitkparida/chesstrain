@@ -1,5 +1,5 @@
 import { StockfishEngine, StockfishCancellationError, StockfishEngineTerminatedError } from '$lib/chess/engine';
-import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, selectTopGameMistakes, verifyCandidate } from '$lib/learning/mistakeAnalysis';
+import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, selectTopGameMistakes, verifyCandidate, type AnalyzedMove } from '$lib/learning/mistakeAnalysis';
 import { ChessComApiError, createChessComClient, fetchLatestEligibleGames, fetchNewEligibleGames } from './client';
 import { createIndexedDbMistakeRepository } from './repository';
 import type { ChessComClient } from './types';
@@ -84,42 +84,69 @@ export class MistakeSyncCoordinator {
 			activeJob = job;
 			await this.repository.putJob(job);
 			const found: PersonalMistakeExercise[] = [];
-			for (let gameIndex = job.gameIndex; gameIndex < newGames.length; gameIndex += 1) {
-				const game = newGames[gameIndex];
-				const candidates = candidatesForGame(game);
-				const firstPly = gameIndex === job.gameIndex ? job.plyIndex : 0;
-				const gameExercises: PersonalMistakeExercise[] = [];
-				for (let plyIndex = firstPly; plyIndex < candidates.length; plyIndex += 1) {
-					job.gameIndex = gameIndex; job.plyIndex = plyIndex; job.updatedAt = Date.now();
-					await this.repository.putJob(job);
-					const quickAnalysis = await quickAnalyzeCandidate(this.engine, game, candidates[plyIndex], signal);
-					const provisional = quickAnalysis ? exerciseFromAnalysis(quickAnalysis, 'provisional') : null;
-					if (provisional) {
-						gameExercises.push(provisional);
-					}
-					if (quickAnalysis) {
-						job.pass = 'verify'; job.updatedAt = Date.now(); await this.repository.putJob(job);
-						const verified = await verifyCandidate(this.engine, quickAnalysis, signal);
-						const verifiedExercise = exerciseFromAnalysis(verified, 'verified');
-						if (verifiedExercise) {
-							const existingIndex = gameExercises.findIndex(ex => ex.id === verifiedExercise.id);
-							if (existingIndex >= 0) gameExercises[existingIndex] = verifiedExercise;
-							else gameExercises.push(verifiedExercise);
-						} else if (provisional) {
-							const existingIndex = gameExercises.findIndex(ex => ex.id === provisional.id);
-							if (existingIndex >= 0) gameExercises.splice(existingIndex, 1);
+			const quickHitsMap = new Map<string, AnalyzedMove>();
+
+			if (job.pass === 'quick') {
+				for (let gameIndex = job.gameIndex; gameIndex < newGames.length; gameIndex += 1) {
+					const game = newGames[gameIndex];
+					const candidates = candidatesForGame(game);
+					const firstPly = gameIndex === job.gameIndex ? job.plyIndex : 0;
+					const gameExercises: PersonalMistakeExercise[] = [];
+					for (let plyIndex = firstPly; plyIndex < candidates.length; plyIndex += 1) {
+						job.gameIndex = gameIndex; job.plyIndex = plyIndex; job.updatedAt = Date.now();
+						await this.repository.putJob(job);
+						const quickAnalysis = await quickAnalyzeCandidate(this.engine, game, candidates[plyIndex], signal);
+						if (quickAnalysis) {
+							quickHitsMap.set(`${game.id}:${candidates[plyIndex].ply}`, quickAnalysis);
+							const provisional = exerciseFromAnalysis(quickAnalysis, 'provisional');
+							if (provisional) {
+								gameExercises.push(provisional);
+							}
 						}
-						job.pass = 'quick';
 					}
+					const topGameMistakes = selectTopGameMistakes(gameExercises);
+					if (topGameMistakes.length > 0) {
+						found.push(...topGameMistakes);
+						await this.repository.putMistakes(this.userId, topGameMistakes);
+						this.update({ mistakesFound: existingMistakes.length + found.length });
+					}
+					job.gamesAnalyzed = gameIndex + 1; job.updatedAt = Date.now();
+					this.update({ gamesAnalyzed: job.gamesAnalyzed, mistakesFound: existingMistakes.length + found.length });
 				}
-				const topGameMistakes = selectTopGameMistakes(gameExercises);
-				if (topGameMistakes.length > 0) {
-					found.push(...topGameMistakes);
-					await this.repository.putMistakes(this.userId, topGameMistakes);
-					this.update({ mistakesFound: existingMistakes.length + found.length });
+				job.pass = 'verify';
+				job.gameIndex = 0;
+				job.plyIndex = 0;
+				job.updatedAt = Date.now();
+				await this.repository.putJob(job);
+			}
+
+			if (job.pass === 'verify') {
+				for (let gameIndex = job.gameIndex; gameIndex < newGames.length; gameIndex += 1) {
+					const game = newGames[gameIndex];
+					const candidates = candidatesForGame(game);
+					const firstPly = gameIndex === job.gameIndex ? job.plyIndex : 0;
+					const gameExercises: PersonalMistakeExercise[] = [];
+					for (let plyIndex = firstPly; plyIndex < candidates.length; plyIndex += 1) {
+						job.gameIndex = gameIndex; job.plyIndex = plyIndex; job.updatedAt = Date.now();
+						await this.repository.putJob(job);
+						const candidate = candidates[plyIndex];
+						const key = `${game.id}:${candidate.ply}`;
+						const quickAnalysis = quickHitsMap.get(key) ?? await quickAnalyzeCandidate(this.engine, game, candidate, signal);
+						if (quickAnalysis) {
+							const verified = await verifyCandidate(this.engine, quickAnalysis, signal);
+							const verifiedExercise = exerciseFromAnalysis(verified, 'verified');
+							if (verifiedExercise) {
+								gameExercises.push(verifiedExercise);
+							}
+						}
+					}
+					const topGameMistakes = selectTopGameMistakes(gameExercises);
+					if (topGameMistakes.length > 0) {
+						await this.repository.putMistakes(this.userId, topGameMistakes);
+					}
+					job.gamesAnalyzed = gameIndex + 1; job.updatedAt = Date.now();
+					this.update({ gamesAnalyzed: job.gamesAnalyzed });
 				}
-				job.gamesAnalyzed = gameIndex + 1; job.updatedAt = Date.now();
-				this.update({ gamesAnalyzed: job.gamesAnalyzed, mistakesFound: existingMistakes.length + found.length });
 			}
 			job.status = 'complete'; job.updatedAt = Date.now(); job.mistakesFound = existingMistakes.length + found.length;
 			await this.repository.putJob(job);

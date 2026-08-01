@@ -74,4 +74,34 @@ describe('MistakeReplayBoard replay transitions', () => {
     expect(screen.getByText('Nf6')).toBeInTheDocument();
     expect(screen.getByText('Finish replay')).toBeInTheDocument();
   });
+
+  it('renders pre-rendered continuation step 0 when continuation is non-empty', () => {
+    render(MistakeReplayBoard, {
+      props: {
+        fen: initialFen,
+        arrows,
+        continuation: [{ fen: step1Fen, move: 'O-O', label: 'O-O' }],
+        step: 0
+      }
+    });
+
+    expect(screen.getByText('The engine line is ready to replay.')).toBeInTheDocument();
+  });
+
+  it('renders pre-calculated multi-step continuation correctly', () => {
+    render(MistakeReplayBoard, {
+      props: {
+        fen: initialFen,
+        arrows,
+        continuation: [
+          { fen: step1Fen, move: 'O-O', label: 'O-O' },
+          { fen: step2Fen, move: 'Nf6', label: 'Nf6' }
+        ],
+        step: 1
+      }
+    });
+
+    expect(screen.getByText('O-O')).toBeInTheDocument();
+    expect(screen.getByText('Show next move')).toBeInTheDocument();
+  });
 });

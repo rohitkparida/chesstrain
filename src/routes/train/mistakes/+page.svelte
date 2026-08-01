@@ -6,21 +6,59 @@
   import ActionButton from '../../../components/ActionButton.svelte';
   import { StockfishEngine } from '$lib/chess/engine';
   import { extractGameMoves, hasAmbiguousAccountColor, mistakeCacheKey, parseCachedMistakes, serializeMistakes, type GameMoveCandidate } from '$lib/learning/gameMistakes';
-  import { applyCoordinateMove, sanForUciMove } from '$lib/chess/moves';
+  import { applyCoordinateMove, applyUciMove, sanForUciMove, type AppliedMove } from '$lib/chess/moves';
   import MistakeReplayBoard from './MistakeReplayBoard.svelte';
   import { recordModuleAttempt } from '../../../stores/session';
   import { get } from 'svelte/store';
 import { sessionStore } from '../../../stores/session';
 import { profileStore } from '../../../stores/profile';
-import { mistakeSyncStore, startMistakeSync } from '../../../stores/mistakeSync';
+import { mistakeSyncStore, startMistakeSync, getPreWarmedMistakes, setPreWarmedMistakes } from '../../../stores/mistakeSync';
 import { createIndexedDbMistakeRepository } from '$lib/chesscom/repository';
 import type { PersonalMistakeExercise } from '$lib/chesscom/types';
 import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
 
   type Mistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
-  let pgn = $state(''); let username = $state(''); let color = $state<'w' | 'b'>('w');
-    let status = $state('Load your public games or paste a PGN to begin.');
-  let candidates = $state<GameMoveCandidate[]>([]); let mistakes = $state<Mistake[]>([]);
+
+  function getInitialMistakesData() {
+    if (typeof window === 'undefined') {
+      return { mistakes: [] as Mistake[], username: '', status: 'Load your public games or paste a PGN to begin.' };
+    }
+    const userId = get(sessionStore).userId ?? 'local-player';
+    let loadedMistakes: Mistake[] = [];
+
+    const syncStateObj = get(mistakeSyncStore);
+    if (syncStateObj.preWarmedMistakes && syncStateObj.preWarmedMistakes.length > 0) {
+      loadedMistakes = syncStateObj.preWarmedMistakes as Mistake[];
+    } else {
+      loadedMistakes = getPreWarmedMistakes(userId) as Mistake[];
+    }
+
+    let loadedUsername = get(profileStore).chessComUsername || '';
+    if (typeof localStorage !== 'undefined') {
+      const cached = parseCachedMistakes<Mistake>(localStorage.getItem(mistakeCacheKey(userId)), userId);
+      if (cached) {
+        if (cached.username) loadedUsername = cached.username;
+        if (!loadedMistakes.length && cached.mistakes.length) {
+          loadedMistakes = cached.mistakes;
+          setPreWarmedMistakes(loadedMistakes);
+        }
+      }
+    }
+
+    const loadedStatus = loadedMistakes.length
+      ? `Loaded ${loadedMistakes.length} saved mistake${loadedMistakes.length === 1 ? '' : 's'}.`
+      : 'Load your public games or paste a PGN to begin.';
+
+    return { mistakes: loadedMistakes, username: loadedUsername, status: loadedStatus };
+  }
+
+  const initialData = getInitialMistakesData();
+  let pgn = $state('');
+  let username = $state(initialData.username);
+  let color = $state<'w' | 'b'>('w');
+  let status = $state(initialData.status);
+  let candidates = $state<GameMoveCandidate[]>([]);
+  let mistakes = $state<Mistake[]>(initialData.mistakes);
   let active = $state(0); let analyzing = $state(false); let feedback = $state(''); let engine: StockfishEngine | null = null;
   let reviewFinished = $state(false); let activeAttempted = $state(false);
   let showImportOptions = $state(false);
@@ -31,6 +69,125 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   let syncUnsubscribe: (() => void) | null = null;
   let backgroundCoordinator: MistakeSyncCoordinator | null = null;
   const mistakeRepository = createIndexedDbMistakeRepository();
+
+  let replayCache = new Map<number, { fen: string; move: string; label: string }[]>();
+  let precalculatingIndices = new Set<number>();
+
+  function isCorrectMove(fen: string, from: string, to: string, applied: AppliedMove, bestMove: string): boolean {
+    const cleanBest = bestMove.trim();
+    if (!cleanBest) return false;
+
+    const playedUci = `${from}${to}`;
+    const playedProm = applied.move.promotion;
+    const playedUciProm = `${from}${to}${playedProm ?? ''}`;
+    const playedSan = applied.move.san;
+
+    if (
+      cleanBest === playedUci ||
+      cleanBest === playedUciProm ||
+      cleanBest === playedSan ||
+      cleanBest.toLowerCase() === playedUci.toLowerCase() ||
+      cleanBest.toLowerCase() === playedUciProm.toLowerCase() ||
+      cleanBest.toLowerCase() === playedSan.toLowerCase()
+    ) {
+      return true;
+    }
+
+    const bestSan = sanForUciMove(fen, cleanBest);
+    if (bestSan && (bestSan === playedSan || bestSan.toLowerCase() === playedSan.toLowerCase())) {
+      return true;
+    }
+
+    const playedUciSan = sanForUciMove(fen, playedUciProm);
+    if (playedUciSan && (playedUciSan === cleanBest || playedUciSan.toLowerCase() === cleanBest.toLowerCase())) {
+      return true;
+    }
+
+    return false;
+  }
+
+  async function precalculateReplay(index: number) {
+    if (index < 0 || index >= mistakes.length) return;
+    if (replayCache.has(index) || precalculatingIndices.has(index)) return;
+
+    precalculatingIndices.add(index);
+    const mistake = mistakes[index];
+    if (!mistake) {
+      precalculatingIndices.delete(index);
+      return;
+    }
+
+    const best = applyCoordinateMove(mistake.fen, mistake.bestMove.slice(0, 2), mistake.bestMove.slice(2, 4), mistake.bestMove.slice(4, 5) || 'q')
+      || applyUciMove(mistake.fen, mistake.bestMove);
+
+    if (!best) {
+      precalculatingIndices.delete(index);
+      return;
+    }
+
+    const initialSteps: { fen: string; move: string; label: string }[] = [
+      { fen: best.afterFen, move: mistake.bestMove, label: mistake.bestMove }
+    ];
+    replayCache.set(index, [...initialSteps]);
+
+    if (!engine) {
+      engine = new StockfishEngine();
+    }
+    const activeEngine = engine;
+    let fen = best.afterFen;
+    const steps = [...initialSteps];
+
+    try {
+      for (let count = 1; count < 3; count++) {
+        const move = await activeEngine.getBestMove(fen).catch(() => '');
+        if (!move) break;
+        const applied = applyCoordinateMove(fen, move.slice(0, 2), move.slice(2, 4), move.slice(4, 5) || 'q')
+          || applyUciMove(fen, move);
+        if (!applied) break;
+        steps.push({ fen: applied.afterFen, move, label: move });
+        fen = applied.afterFen;
+      }
+      replayCache.set(index, steps);
+    } catch {
+      // Keep initial step on failure
+    } finally {
+      precalculatingIndices.delete(index);
+    }
+
+    if (active === index && replayReady) {
+      replay = replayCache.get(index) ?? initialSteps;
+    }
+  }
+
+  function precalculateUpcoming(currentIndex = active) {
+    if (!mistakes.length) return;
+    void precalculateReplay(currentIndex);
+    void precalculateReplay(currentIndex + 1);
+  }
+
+  function activateReplayForActive() {
+    replayReady = true;
+    const cached = replayCache.get(active);
+    if (cached && cached.length > 0) {
+      replay = cached;
+    } else {
+      const mistake = mistakes[active];
+      if (mistake) {
+        const best = applyCoordinateMove(mistake.fen, mistake.bestMove.slice(0, 2), mistake.bestMove.slice(2, 4), mistake.bestMove.slice(4, 5) || 'q')
+          || applyUciMove(mistake.fen, mistake.bestMove);
+        if (best) {
+          replay = [{ fen: best.afterFen, move: mistake.bestMove, label: mistake.bestMove }];
+        }
+        void precalculateReplay(active);
+      }
+    }
+  }
+
+  $effect(() => {
+    if (mistakes.length > 0 && active < mistakes.length) {
+      precalculateUpcoming(active);
+    }
+  });
 
   function savedMistakeToReview(exercise: PersonalMistakeExercise): Mistake | null {
     if (exercise.verificationStatus === 'discarded') return null;
@@ -46,7 +203,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     if (!connection) return;
     const saved = await mistakeRepository.listMistakes(userId, connection.playerId);
     const reviewable = saved.map(savedMistakeToReview).filter((value): value is Mistake => value !== null);
-    if (reviewable.length) { mistakes = reviewable; active = 0; reviewFinished = false; status = `Loaded ${reviewable.length} saved mistake${reviewable.length === 1 ? '' : 's'}.`; }
+    if (reviewable.length) { mistakes = reviewable; active = 0; reviewFinished = false; status = `Loaded ${reviewable.length} saved mistake${reviewable.length === 1 ? '' : 's'}.`; precalculateUpcoming(0); }
   }
 
   async function importUsername() {
@@ -63,13 +220,14 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     try { candidates = extractGameMoves(pgn, color, username.trim() || undefined); } catch { status = 'That PGN could not be read. Check the pasted game.'; return; }
     if (!candidates.length) { status = 'No moves found for that side.'; return; }
     mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisIndex = 0; analysisGeneration++;
+    replayCache.clear(); precalculatingIndices.clear();
     status = `Analyzing move 1 of ${candidates.length}...`;
     engine?.terminate(); engine = new StockfishEngine(); void analyzeNext(0, analysisGeneration);
   }
   async function analyzeNext(index: number, generation = analysisGeneration) {
     if (generation !== analysisGeneration) return;
     const candidate = candidates[index];
-    if (!candidate || !engine) { analyzing = false; status = mistakes.length ? `Found ${mistakes.length} move${mistakes.length === 1 ? '' : 's'} that need review.` : 'No moves worsened your position by about 0.8 pawn or more.'; persistMistakes(); return; }
+    if (!candidate || !engine) { analyzing = false; status = mistakes.length ? `Found ${mistakes.length} move${mistakes.length === 1 ? '' : 's'} that need review.` : 'No moves worsened your position by about 0.8 pawn or more.'; persistMistakes(); precalculateUpcoming(0); return; }
       status = `Analyzing move ${index + 1} of ${candidates.length}...`;
     const activeEngine = engine;
     try {
@@ -81,10 +239,11 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       const loss = beforePerspective - afterPerspective;
       if (loss >= 80 && before.bestMove) mistakes = [...mistakes, { ...candidate, bestMove: before.bestMove, loss }];
       persistMistakes();
+      precalculateUpcoming(active);
       analysisIndex = index + 1;
       void analyzeNext(index + 1, generation);
     } catch {
-      if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; }
+      if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; precalculateUpcoming(active); }
     }
   }
   function cancelAnalysis() {
@@ -103,39 +262,57 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   }
   function handleMove(from: string, to: string) {
     const mistake = mistakes[active]; if (!mistake) return false;
-    if (!applyCoordinateMove(mistake.fen, from, to)) return false;
+    const applied = applyCoordinateMove(mistake.fen, from, to);
+    if (!applied) return false;
     const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
-    if (`${from}${to}` === mistake.bestMove) { feedback = `Correct. Stockfish recommends ${sanForUciMove(mistake.fen, mistake.bestMove)}. This avoids about ${(mistake.loss / 100).toFixed(1)} pawns of evaluation loss.`; replayReady = true; prepareReplay(mistake); if (!activeAttempted) recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 1, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; return true; }
-    feedback = 'That move is legal, but it does not address the problem Stockfish found. Try again.'; if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; } return false;
+    const correct = isCorrectMove(mistake.fen, from, to, applied, mistake.bestMove);
+    if (correct) {
+      feedback = `Correct. Stockfish recommends ${sanForUciMove(mistake.fen, mistake.bestMove)}. This avoids about ${(mistake.loss / 100).toFixed(1)} pawns of evaluation loss.`;
+      activateReplayForActive();
+      if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 1, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; }
+      return true;
+    }
+    feedback = 'That move is legal, but it does not address the problem Stockfish found. Try again.';
+    if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; }
+    return false;
   }
   function giveUp() {
     const mistake = mistakes[active]; if (!mistake || activeAttempted) return;
     const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
     activeAttempted = true;
-    replayReady = true;
+    activateReplayForActive();
     feedback = `You gave up. The best move was ${sanForUciMove(mistake.fen, mistake.bestMove)}. Review the line, then continue.`;
     recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, assistance: 'solution', tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
-    void prepareReplay(mistake);
-  }
-  async function prepareReplay(mistake: Mistake) {
-    replay = []; replayStep = 0;
-    const best = applyCoordinateMove(mistake.fen, mistake.bestMove.slice(0, 2), mistake.bestMove.slice(2, 4));
-    if (!best || !engine) return;
-    const steps = [{ fen: best.afterFen, move: mistake.bestMove, label: mistake.bestMove }];
-    const activeEngine = engine;
-    let fen = best.afterFen;
-    for (let count = 1; count < 3; count++) {
-      const move = await activeEngine.getBestMove(fen).catch(() => '');
-      const applied = move ? applyCoordinateMove(fen, move.slice(0, 2), move.slice(2, 4)) : null;
-      if (!applied) break;
-      steps.push({ fen: applied.afterFen, move, label: move });
-      fen = applied.afterFen;
-    }
-    replay = steps;
   }
   function advanceReplay() { if (replayStep < replay.length) replayStep++; }
-  function nextMistake() { if (active < mistakes.length - 1) { active++; feedback = ''; replay = []; replayStep = 0; replayReady = false; activeAttempted = false; } else { reviewFinished = true; replayReady = false; feedback = 'Review complete. Your saved mistakes are ready for another pass.'; } }
-  function reviewAgain() { active = 0; reviewFinished = false; feedback = ''; replay = []; replayStep = 0; replayReady = false; activeAttempted = false; status = 'Review the saved mistakes again.'; }
+  function nextMistake() {
+    if (active < mistakes.length - 1) {
+      active++;
+      feedback = '';
+      replayStep = 0;
+      replayReady = false;
+      activeAttempted = false;
+      replay = replayCache.get(active) ?? [];
+      precalculateUpcoming(active);
+    } else {
+      reviewFinished = true;
+      replayReady = false;
+      feedback = 'Review complete. Your saved mistakes are ready for another pass.';
+    }
+  }
+  function reviewAgain() {
+    active = 0;
+    reviewFinished = false;
+    feedback = '';
+    replay = [];
+    replayStep = 0;
+    replayReady = false;
+    activeAttempted = false;
+    replayCache.clear();
+    precalculatingIndices.clear();
+    status = 'Review the saved mistakes again.';
+    precalculateUpcoming(0);
+  }
   async function analyzeNewerGames() {
     const userId = get(sessionStore).userId ?? 'local-player';
     const coordinator = startMistakeSync(userId, username, true);
@@ -145,7 +322,23 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     status = 'Finding newer mistakes...';
     await loadBackgroundMistakes();
   }
-  function reset() { pgn = ''; username = ''; candidates = []; mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; showImportOptions = false; feedback = ''; replay = []; replayStep = 0; replayReady = false; status = 'Enter a Chess.com name or paste a PGN.'; }
+  function reset() {
+    pgn = '';
+    username = '';
+    candidates = [];
+    mistakes = [];
+    active = 0;
+    reviewFinished = false;
+    activeAttempted = false;
+    showImportOptions = false;
+    feedback = '';
+    replay = [];
+    replayStep = 0;
+    replayReady = false;
+    replayCache.clear();
+    precalculatingIndices.clear();
+    status = 'Enter a Chess.com name or paste a PGN.';
+  }
   function persistMistakes() {
     if (typeof localStorage === 'undefined') return;
     const userId = get(sessionStore).userId ?? 'local-player';
@@ -154,7 +347,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   onMount(() => {
     const userId = get(sessionStore).userId ?? 'local-player';
     const cached = parseCachedMistakes<Mistake>(localStorage.getItem(mistakeCacheKey(userId)), userId);
-    if (cached) { username = cached.username; mistakes = cached.mistakes; status = `Loaded ${mistakes.length} saved mistake${mistakes.length === 1 ? '' : 's'}.`; }
+    if (cached) { username = cached.username; mistakes = cached.mistakes; status = `Loaded ${mistakes.length} saved mistake${mistakes.length === 1 ? '' : 's'}.`; precalculateUpcoming(0); }
     if (!username) username = get(profileStore).chessComUsername;
     syncUnsubscribe = mistakeSyncStore.subscribe((state) => {
       syncState = state;

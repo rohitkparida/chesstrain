@@ -5,7 +5,7 @@ import { mistakeExerciseId } from '$lib/chesscom/types';
 import { extractGameMoves, type GameMoveCandidate } from './gameMistakes';
 
 export const MISTAKE_ANALYSIS_VERSION = 'stockfish-v2';
-export const QUICK_ANALYSIS_MS = 150;
+export const QUICK_ANALYSIS_MS = 50;
 export const VERIFY_ANALYSIS_MS = 750;
 export const QUICK_THRESHOLD_CP = 60;
 export const MISTAKE_THRESHOLD_CP = 150;
