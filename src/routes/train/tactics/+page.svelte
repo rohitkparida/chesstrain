@@ -184,6 +184,9 @@
       activePuzzle = next;
       preparePuzzle(next);
       prepareEvaluation(next);
+    } else {
+      preparePuzzle(activePuzzle);
+      prepareEvaluation(activePuzzle);
     }
     attemptState = nextPuzzleState(); skipConfirm = false;
     attemptStartedAt = Date.now();

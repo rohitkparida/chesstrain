@@ -70,13 +70,33 @@
   function advanceStep() {
     step = Math.min(3, step + 1);
   }
+
+  function reset() {
+    evalScore = 0;
+    feedback = '';
+    spaceAdv = '';
+    weakSquares = '';
+    pawnStructure = '';
+    feedbackError = false;
+    rubric = null;
+    overlayIndex = 0;
+    step = 1;
+    startedAt = Date.now();
+    plans = [
+      { id: "a", text: "Push the queenside pawns (spatial expansion)" },
+      { id: "b", text: "Reroute the knight to e5 via d3" },
+      { id: "c", text: "Simplify center structure via exchanges" },
+      { id: "d", text: "Open the f-file for the active rook" }
+    ];
+  }
 </script>
 
 <TrainingModuleShell
   title="Understanding the Position"
   task="Evaluate the position and rank the plans."
   taskKeywords={['Evaluate', 'rank the plans']}
-  onSkip={() => { rubric = null; feedback = ''; step = 1; startedAt = Date.now(); }}
+  onReset={reset}
+  onSkip={reset}
 >
   
   <div class="board-layout">
