@@ -25,7 +25,7 @@
   const derivedCorrectSquares = $derived(
     disabled && reveal !== undefined && reveal !== null
       ? Array.isArray(reveal)
-        ? (reveal as string[])
+        ? reveal.filter((item): item is string => typeof item === 'string')
         : typeof reveal === 'string' && reveal !== 'none'
           ? [reveal]
           : []

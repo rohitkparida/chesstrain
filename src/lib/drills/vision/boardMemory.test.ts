@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { drill, generateRandomPosition, targetPieceCount } from './boardMemory';
+import { drill } from './boardMemory';
+import { generateRandomPosition, targetPieceCount } from './boardMemoryUtils';
 import { Chess } from 'chess.js';
 
 describe('boardMemory drill', () => {

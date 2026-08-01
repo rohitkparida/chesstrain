@@ -1,7 +1,7 @@
 import type { LazyDrillEntry } from './types';
-import { DRILL_METADATA } from './metadata';
+import { DRILL_METADATA, type DrillId } from './metadata';
 
-export const DRILLS: Record<string, LazyDrillEntry> = {
+export const DRILLS = {
   'vision.find-square': {
     ...DRILL_METADATA['vision.find-square'],
     load: () => import('./vision/findSquare').then((m) => m.drill)
@@ -34,9 +34,9 @@ export const DRILLS: Record<string, LazyDrillEntry> = {
     ...DRILL_METADATA['tactics.random'],
     load: () => import('./tactics/randomTactics').then((m) => m.drill)
   }
-};
+} as const satisfies Record<DrillId, LazyDrillEntry>;
 
-export type DrillId = keyof typeof DRILLS;
+export { type DrillId };
 
 export function pickRandomDrillId(
   drillIds: string[],

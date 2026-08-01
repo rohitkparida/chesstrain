@@ -54,7 +54,7 @@
     if (fixedKind) return;
     const validSaved = readJson(`${STORAGE_KEY}_${currentUserId}`, (parsed) => {
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const filtered = parsed.filter((id): id is string => typeof id === 'string' && allVisionIds.includes(id));
+        const filtered = parsed.filter((id): id is string => typeof id === 'string' && (allVisionIds as readonly string[]).includes(id));
         return filtered.length > 0 ? filtered : null;
       }
       return null;
@@ -81,7 +81,7 @@
   }
 
   let currentEntry = $derived<LazyDrillEntry>(
-    DRILLS[currentDrillId] ?? DRILLS['vision.name-square']
+    (DRILLS as Record<string, LazyDrillEntry>)[currentDrillId] ?? DRILLS['vision.name-square']
   );
 
   const context = $derived<DrillContext>({

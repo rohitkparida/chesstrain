@@ -108,17 +108,11 @@ export function assessSquareSelection(
 }
 
 export function createSelectionVisionDrill(config: {
-	metadata?: DrillMeta<'square-select'>;
-	id?: string;
-	label?: string;
-	description?: string;
+	metadata: DrillMeta<'square-select'>;
 	kind: 'loose-pieces' | 'pinned-pieces' | 'square-control';
 	noneExpected: string;
 }): DrillDefinition<'square-select'> {
-	const id = config.metadata?.id ?? config.id!;
-	const module = config.metadata?.module ?? 'board-grip';
-	const label = config.metadata?.label ?? config.label!;
-	const description = config.metadata?.description ?? config.description!;
+	const { id, module, label, description } = config.metadata;
 
 	return {
 		id,

@@ -62,10 +62,12 @@ export const DRILL_METADATA = {
   'tactics.random': {
     id: 'tactics.random',
     module: 'tactics',
-    label: 'Tactics Puzzle',
-    description: 'Find the winning tactic for the position.',
+    label: 'Tactics Practice',
+    description: 'Solve procedural and Lichess tactical positions.',
     interaction: 'move'
   }
 } as const satisfies Record<string, DrillMeta>;
 
 export type DrillId = keyof typeof DRILL_METADATA;
+
+export type KnownDrillId = DrillId;

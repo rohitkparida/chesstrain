@@ -216,16 +216,14 @@ export const MODULE_PREREQUISITES: Readonly<Record<TrainingModuleId, readonly Tr
 	mistakes: []
 };
 
+import { isRecord } from '$lib/storage/localJsonStorage';
+
 export function isAssistanceLevel(value: unknown): value is AssistanceLevel {
 	return value === 'none' || value === 'hint' || value === 'guided' || value === 'solution';
 }
 
 export function isTrainingModuleId(value: unknown): value is TrainingModuleId {
 	return typeof value === 'string' && (TRAINING_MODULE_IDS as readonly string[]).includes(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function isTrainingAttempt(value: unknown): value is TrainingAttempt {

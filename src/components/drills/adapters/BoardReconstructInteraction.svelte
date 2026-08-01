@@ -4,7 +4,7 @@
 	import ChessBoard from '../../ChessBoard.svelte';
 	import ActionButton from '../../ActionButton.svelte';
 	import { buildBoardSquares, pieceGlyph, type BoardSquare } from '$lib/chess/board';
-	import { buildFenFromMap, parseBoardPieces, generateRandomPosition } from '$lib/drills/vision/boardMemory';
+	import { buildFenFromMap, parseBoardPieces, generateRandomPosition } from '$lib/drills/vision/boardMemoryUtils';
 	import type { BoardMemoryLevel } from '$lib/drills/types';
 
 	let {

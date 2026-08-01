@@ -61,13 +61,13 @@ describe('Drill Registry and Contracts', () => {
     const nameSquareDef = await DRILLS['vision.name-square'].load();
     const inst = await nameSquareDef.generate(context);
 
-    const targetSquare = (inst.privateData as { targetSquare: string }).targetSquare;
-    const correctEval = await nameSquareDef.evaluate(inst.privateData, targetSquare);
+    const targetSquare = (inst.privateData as unknown as { targetSquare: string }).targetSquare;
+    const correctEval = await nameSquareDef.evaluate(inst.privateData as any, targetSquare);
     expect(correctEval.correct).toBe(true);
     expect(correctEval.score).toBe(1);
 
     const wrongEval = await nameSquareDef.evaluate(
-      inst.privateData,
+      inst.privateData as any,
       'a1' === targetSquare ? 'h8' : 'a1'
     );
     expect(wrongEval.correct).toBe(false);

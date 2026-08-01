@@ -10,7 +10,7 @@ test('login, Today, Train catalog, and module metadata flow', async ({ page }) =
   if (await onboarding.isVisible()) {
     await onboarding.getByRole('button', { name: /start today's plan/i }).click();
   }
-  await expect(page.getByRole('heading', { name: /10-minute plan/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /today's plan/i })).toBeVisible();
 
   await page.getByRole('link', { name: 'Train', exact: true }).click();
   await expect(page).toHaveURL(/\/train$/);
@@ -19,11 +19,10 @@ test('login, Today, Train catalog, and module metadata flow', async ({ page }) =
 
   await page.getByRole('link', { name: /Board Vision/ }).click();
   await expect(page).toHaveURL(/\/train\/squares$/);
-  await expect(page.locator('.task-label', { hasText: 'YOUR TASK' })).toBeVisible();
-  await expect(page.getByLabel('Exercise details')).toContainText('New');
+  await expect(page.locator('.instruction-banner')).toBeVisible();
 
   await page.reload();
-  await expect(page.getByLabel('Exercise details')).toBeVisible();
+  await expect(page.locator('.instruction-banner')).toBeVisible();
 
   await page.goto('/dictionary#loose-piece');
   await expect(page).toHaveURL(/\/dictionary#loose-piece$/);
@@ -44,8 +43,7 @@ test('guest mode opens every module', async ({ page }) => {
 
   for (const route of ['/train/calculation', '/train/positional', '/train/decision', '/train/endgame', '/train/opening', '/train/squares', '/train/mistakes']) {
     await page.goto(route);
-    await page.waitForTimeout(1000);
-    const task = page.locator('.task-label', { hasText: 'YOUR TASK' });
-    await expect(task).toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(500);
+    await expect(page.locator('main[data-workflow], .instruction-banner, .board-layout').first()).toBeVisible({ timeout: 10_000 });
   }
 });

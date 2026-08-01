@@ -14,7 +14,7 @@ export interface UserProfile {
 }
 
 import { PROFILE_STORAGE_KEY } from './keys';
-import { readScopedStorageItem } from '$lib/storage/localJsonStorage';
+import { readScopedStorageItem, isRecord } from '$lib/storage/localJsonStorage';
 export { PROFILE_STORAGE_KEY };
 
 export function defaultProfileFor(username: string): UserProfile {
@@ -26,10 +26,6 @@ export function defaultProfileFor(username: string): UserProfile {
 }
 
 export const defaultProfile: UserProfile = defaultProfileFor(LOCAL_ACCOUNT_USERNAME);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export function sanitizeProfile(value: unknown): UserProfile {
   if (!isRecord(value)) return { ...defaultProfile };
