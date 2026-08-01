@@ -15,7 +15,7 @@ export function startMistakeSync(userId: string, username: string, force = false
 		coordinators.set(key, coordinator);
 		coordinator.subscribe(state => mistakeSyncStore.set(state));
 	}
-	void coordinator.run(force);
+	void coordinator.run(force).catch(() => {});
 	return coordinator;
 }
 

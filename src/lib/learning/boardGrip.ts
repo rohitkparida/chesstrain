@@ -27,7 +27,7 @@ export function randomBoardGripView(kind: BoardGripKind, random: () => number = 
 	return { orientation: 'white', rotation: 270 };
 }
 
-const DRILL_KINDS: BoardGripKind[] = ['name-square', 'attackers', 'loose-pieces', 'pinned-pieces', 'find-square'];
+const DRILL_KINDS: BoardGripKind[] = ['name-square', 'find-square', 'attackers', 'loose-pieces', 'pinned-pieces'];
 export const NONE_ANSWER_RATE = 0.15;
 const COLORS: Color[] = ['w', 'b'];
 const COLOR_NAME: Record<Color, string> = { w: 'White', b: 'Black' };
@@ -77,6 +77,7 @@ function chooseLooseColor(fen: string, random: () => number): Color {
 	const black = loosePieceSquaresFromFen(fen, 'b').length;
 	if (white === black) return random() < 0.5 ? 'w' : 'b';
 	if (white === 0) return random() < 0.3 ? 'w' : 'b';
+	if (black === 0) return random() < 0.3 ? 'b' : 'w';
 	if (black === 0) return random() < 0.3 ? 'b' : 'w';
 	return white < black ? 'w' : 'b';
 }
@@ -144,10 +145,16 @@ export function pinnedPieceSquaresFromFen(fen: string): string[] {
 export function makeBoardGripRound(
 	kind: BoardGripKind,
 	fen: string,
-	random: () => number = Math.random
+	random: () => number = Math.random,
+	previousTargetSquare = ''
 ): BoardGripRound {
 	if (kind === 'find-square') {
-		const targetSquare = randomSquare('', random);
+		let targetSquare = randomSquare(previousTargetSquare, random);
+		let attempts = 0;
+		while (previousTargetSquare && targetSquare === previousTargetSquare && attempts < 10) {
+			targetSquare = randomSquare(previousTargetSquare, random);
+			attempts++;
+		}
 		return {
 			kind,
 			label: 'Find square',
@@ -159,11 +166,16 @@ export function makeBoardGripRound(
 	}
 
 	if (kind === 'name-square') {
-		const targetSquare = randomSquare('', random);
+		let targetSquare = randomSquare(previousTargetSquare, random);
+		let attempts = 0;
+		while (previousTargetSquare && targetSquare === previousTargetSquare && attempts < 10) {
+			targetSquare = randomSquare(previousTargetSquare, random);
+			attempts++;
+		}
 		return {
 			kind,
 			label: 'Name square',
-			prompt: `Find ${targetSquare}`,
+			prompt: 'Name the highlighted square.',
 			fen,
 			targetSquare,
 			answers: [targetSquare]
@@ -171,7 +183,12 @@ export function makeBoardGripRound(
 	}
 
 	if (kind === 'attackers') {
-		const targetSquare = randomEmptySquare(fen, random);
+		let targetSquare = randomEmptySquare(fen, random);
+		let attempts = 0;
+		while (previousTargetSquare && targetSquare === previousTargetSquare && attempts < 10) {
+			targetSquare = randomEmptySquare(fen, random);
+			attempts++;
+		}
 		return {
 			kind,
 			label: 'Square control',
@@ -202,20 +219,38 @@ export function makeBoardGripRound(
 	};
 }
 
+export function sampleSquareSelectionRound<T extends { answers: string[]; fen: string }>(
+	context: { random: () => number },
+	makeRound: (fen: string) => T,
+	previousTargetSquare?: string
+): T {
+	const wantNone = context.random() < NONE_ANSWER_RATE;
+	let fen = randomRealisticFen('', context.random);
+	let round = makeRound(fen);
+
+	for (let attempt = 0; attempt < 12; attempt += 1) {
+		if ((round.answers.length === 0) === wantNone) break;
+		fen = randomRealisticFen(fen, context.random);
+		round = makeRound(fen);
+	}
+
+	return round;
+}
+
 export function nextBoardGripRound(
 	previous: BoardGripRound | null = null,
 	random: () => number = Math.random
 ): BoardGripRound {
 	const kind = randomKind(previous?.kind, random);
-	if (kind === 'name-square' || kind === 'find-square') return makeBoardGripRound(kind, randomRealisticFen(previous?.fen ?? '', random), random);
+	if (kind === 'name-square' || kind === 'find-square') return makeBoardGripRound(kind, randomRealisticFen(previous?.fen ?? '', random), random, previous?.targetSquare);
 
 	const wantNone = random() < NONE_ANSWER_RATE;
 	let fen = randomRealisticFen(previous?.fen ?? '', random);
-	let round = makeBoardGripRound(kind, fen, random);
+	let round = makeBoardGripRound(kind, fen, random, previous?.targetSquare);
 	for (let attempt = 0; attempt < 12; attempt += 1) {
 		if ((round.answers.length === 0) === wantNone) return round;
 		fen = randomRealisticFen(fen, random);
-		round = makeBoardGripRound(kind, fen, random);
+		round = makeBoardGripRound(kind, fen, random, previous?.targetSquare);
 	}
 	return round;
 }
@@ -228,7 +263,7 @@ export function nextBoardGripRoundForKind(
 	return makeBoardGripRound(kind, randomRealisticFen(previousFen, random), random);
 }
 
-export function safeKingSquaresFromFen(fen: string): { squares: string[]; color: Color } {
+export function safeKingSquaresInfoFromFen(fen: string): { squares: string[]; unsafeCount: number; color: Color } {
 	const game = new Chess(fen);
 	const color = game.turn();
 
@@ -241,10 +276,24 @@ export function safeKingSquaresFromFen(fen: string): { squares: string[]; color:
 		}
 	}
 
-	if (!kingSquare) return { squares: [], color };
+	if (!kingSquare) return { squares: [], unsafeCount: 0, color };
 
 	type FileSymbol = (typeof FILES)[number];
 	const kingFile = FILES.indexOf(kingSquare[0] as FileSymbol);
+	const kingRank = Number(kingSquare[1]) - 1;
+
+	const adjacentSquares: string[] = [];
+	for (let df = -1; df <= 1; df++) {
+		for (let dr = -1; dr <= 1; dr++) {
+			if (df === 0 && dr === 0) continue;
+			const f = kingFile + df;
+			const r = kingRank + dr;
+			if (f >= 0 && f < 8 && r >= 0 && r < 8) {
+				adjacentSquares.push(`${FILES[f]}${r + 1}`);
+			}
+		}
+	}
+
 	const legalKingMoves = game.moves({ square: kingSquare as Square, verbose: true });
 	const safe = sortSquares(
 		legalKingMoves
@@ -252,5 +301,11 @@ export function safeKingSquaresFromFen(fen: string): { squares: string[]; color:
 			.map((m) => m.to)
 	);
 
-	return { squares: safe, color };
+	const unsafeCount = adjacentSquares.length - safe.length;
+	return { squares: safe, unsafeCount, color };
+}
+
+export function safeKingSquaresFromFen(fen: string): { squares: string[]; color: Color } {
+	const info = safeKingSquaresInfoFromFen(fen);
+	return { squares: info.squares, color: info.color };
 }

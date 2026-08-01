@@ -1,14 +1,7 @@
 import { writable } from 'svelte/store';
 import { GUEST_USERNAME, LOCAL_ACCOUNT_USERNAME, LOCAL_ACCOUNTS, localAuthRepository } from '$lib/account/localAuth';
-import { migrateLocalAccount } from '$lib/db/migrateLocalAccount';
-import { getSupabaseClient, hasSupabaseConfig } from '$lib/db/client';
 
 const GUEST_SESSION_KEY = 'magnus_guest_authenticated';
-const CLOUD_SESSION_KEY = 'magnus_cloud_username';
-
-function cloudEmail(username: string): string {
-  return `${username}@magnus.engine`;
-}
 
 export interface LocalAuthState {
   username: string;
@@ -23,16 +16,15 @@ export interface LocalAuthState {
 function currentState(selectedUsername?: string): LocalAuthState {
   const guestActive = typeof window !== 'undefined' && localStorage.getItem(GUEST_SESSION_KEY) === '1';
   const active = localAuthRepository.activeUsername();
-  const cloudActive = typeof window !== 'undefined' ? localStorage.getItem(CLOUD_SESSION_KEY) : null;
-  const username = guestActive ? GUEST_USERNAME : cloudActive ?? active ?? selectedUsername ?? LOCAL_ACCOUNT_USERNAME;
+  const username = guestActive ? GUEST_USERNAME : active ?? selectedUsername ?? LOCAL_ACCOUNT_USERNAME;
   return {
     username,
     accounts: LOCAL_ACCOUNTS,
     hasPassword: localAuthRepository.hasPassword(username),
-    authenticated: guestActive || active === username || cloudActive === username,
+    authenticated: guestActive || active === username,
     working: false,
-    error: ''
-    ,guest: username === GUEST_USERNAME
+    error: '',
+    guest: username === GUEST_USERNAME
   };
 }
 
@@ -69,18 +61,7 @@ export async function signInLocal(password: string): Promise<boolean> {
   let username = LOCAL_ACCOUNT_USERNAME;
   authStore.update((state) => { username = state.username; return { ...state, working: true, error: '' }; });
   try {
-    const cloud = getSupabaseClient();
-    if (hasSupabaseConfig() && cloud) {
-      const { data, error } = await cloud.auth.signInWithPassword({ email: cloudEmail(username), password });
-      if (!error && data.user) {
-        if (typeof window !== 'undefined') localStorage.setItem(CLOUD_SESSION_KEY, username);
-        await migrateLocalAccount(username).catch(() => undefined);
-        authStore.set(currentState(username));
-        return true;
-      }
-    }
     const valid = await localAuthRepository.signIn(username, password);
-    if (valid) await migrateLocalAccount(username).catch(() => undefined);
     authStore.set(valid ? currentState(username) : { ...currentState(username), error: 'Incorrect password.' });
     return valid;
   } catch {
@@ -93,9 +74,6 @@ export function lockLocalAccount(): void {
   let selected = LOCAL_ACCOUNT_USERNAME;
   authStore.update((state) => { selected = state.username; return state; });
   localAuthRepository.signOut();
-  const cloud = getSupabaseClient();
-  if (cloud) cloud.auth.signOut().catch(() => undefined);
-  if (typeof window !== 'undefined') localStorage.removeItem(CLOUD_SESSION_KEY);
   if (typeof window !== 'undefined') localStorage.removeItem(GUEST_SESSION_KEY);
   authStore.set(currentState(selected));
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DrillRunnerMachine, type AttemptRecordEvent, type RunnerState } from '$lib/drills/runner';
-  import type { LazyDrillEntry, DrillContext, SquareOrientation, InteractionKind, InteractionContracts } from '$lib/drills/types';
+  import { extractKeywordsFromPrompt, type LazyDrillEntry, type DrillContext, type SquareOrientation, type InteractionKind, type InteractionContracts } from '$lib/drills/types';
   import { INTERACTIONS } from './adapters';
   import TrainingModuleShell from '../TrainingModuleShell.svelte';
   import ActionButton from '../ActionButton.svelte';
@@ -75,16 +75,20 @@
     runnerState.definition ? INTERACTIONS[runnerState.definition.interaction] : null
   );
 
+  const taskKeywords = $derived(
+    runnerState.instance?.prompt ? extractKeywordsFromPrompt(runnerState.instance.prompt) : []
+  );
+
   const mergedPublicData = $derived(() => {
     const pub = (runnerState.instance?.publicData as Record<string, unknown>) ?? {};
     return orientationOverride ? { ...pub, orientation: orientationOverride } : pub;
   });
 </script>
 
-<div class="drill-runner-container">
-  {#if isLoading || runnerState.status === 'loading'}
+<div class="drill-runner-container" class:is-loading={isLoading}>
+  {#if (isLoading || runnerState.status === 'loading') && !runnerState.instance}
     <div class="loading-state"><p>Loading drill...</p></div>
-  {:else if loadError}
+  {:else if loadError && !runnerState.instance}
     <div class="error-container">
       <p class="error-msg">Failed to load drill: {loadError}</p>
       <ActionButton variant="primary" onclick={() => loadAndGenerate()}>Retry</ActionButton>
@@ -93,23 +97,18 @@
     <TrainingModuleShell
       title={runnerState.definition.label}
       task={runnerState.instance.prompt}
+      taskKeywords={taskKeywords}
       onSkip={handleSkip}
     >
       {#snippet children()}
-        <div class="drill-body">
-          <div class="header-controls">
-            {#if runnerState.status === 'active'}
-              <button type="button" class="btn-text" onclick={() => runner.giveUp()}>Give up & show answer</button>
-            {/if}
-          </div>
-
+        <div class="drill-body" class:is-loading={isLoading}>
           <div class="board-area">
             {#if activeAdapter}
               {@const AdapterComponent = activeAdapter}
               <AdapterComponent
                 data={mergedPublicData()}
                 reveal={runnerState.assessment?.reveal}
-                disabled={runnerState.status !== 'active'}
+                disabled={runnerState.status !== 'active' || isLoading}
                 onSubmit={handleSubmitResponse}
               />
             {:else}
@@ -117,17 +116,18 @@
             {/if}
           </div>
 
-          {#if runnerState.status === 'feedback'}
-            <div class="feedback-section">
-              <div class="feedback-box" class:correct={runnerState.assessment?.correct} class:incorrect={!runnerState.assessment?.correct}>
-                <p class="feedback-msg">{runnerState.assessment?.feedback ?? ''}</p>
+          <div class="action-bar">
+            {#if runnerState.status === 'active'}
+              <button type="button" class="btn-text" onclick={() => runner.giveUp()}>Give up & show answer</button>
+            {:else if runnerState.status === 'feedback'}
+              <div class="feedback-badge" class:correct={runnerState.assessment?.correct} class:incorrect={!runnerState.assessment?.correct}>
+                <span class="feedback-msg">{runnerState.assessment?.feedback ?? ''}</span>
               </div>
-              <div class="continue-row">
-                <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
-              </div>
-            </div>
-          {/if}
+              <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
+            {/if}
+          </div>
 
+          {#if loadError}<p class="error-msg">{loadError}</p>{/if}
           {#if runnerState.error}<p class="error-msg">{runnerState.error}</p>{/if}
         </div>
       {/snippet}
@@ -136,17 +136,85 @@
 </div>
 
 <style>
-  .drill-runner-container { width: 100%; }
-  .loading-state, .error-container { padding: 3rem; text-align: center; color: var(--text-4); display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-  .drill-body { display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; }
-  .header-controls { display: flex; justify-content: flex-end; gap: 0.5rem; width: 100%; }
-  .btn-text { background: transparent; border: none; color: var(--text-4); font-size: 0.85rem; cursor: pointer; padding: 0.2rem 0.5rem; }
-  .btn-text:hover { color: var(--text-1); }
-  .board-area { width: 100%; display: flex; justify-content: center; }
-  .feedback-section { display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 1rem; }
-  .feedback-box { padding: 0.75rem 1rem; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); }
-  .feedback-box.correct { background: var(--success-dim); border-color: var(--success); color: var(--success); }
-  .feedback-box.incorrect { background: var(--error-dim); border-color: var(--error); color: var(--error); }
-  .feedback-msg { margin: 0; font-size: 0.95rem; font-weight: 600; }
+  .drill-runner-container {
+    width: 100%;
+    min-height: calc(var(--training-board-size, 480px) + 160px);
+    display: flex;
+    flex-direction: column;
+  }
+  .loading-state, .error-container {
+    min-height: calc(var(--training-board-size, 480px) + 160px);
+    width: 100%;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    box-sizing: border-box;
+  }
+  .drill-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    transition: opacity 0.15s ease;
+  }
+  .drill-body.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .board-area {
+    width: 100%;
+    min-height: var(--training-board-size, 480px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .action-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 2.75rem;
+  }
+  .btn-text {
+    background: transparent;
+    border: none;
+    color: var(--text-4);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.4rem 0.75rem;
+  }
+  .btn-text:hover {
+    color: var(--text-1);
+  }
+  .feedback-badge {
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+  }
+  .feedback-badge.correct {
+    background: var(--success-dim);
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .feedback-badge.incorrect {
+    background: var(--error-dim);
+    border-color: var(--error);
+    color: var(--error);
+  }
+  .feedback-msg {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
   .error-text, .error-msg { color: var(--error); font-size: 0.85rem; }
 </style>

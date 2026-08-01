@@ -1,13 +1,56 @@
-import { buildProgressMap } from './unlocks';
 import type { SRSEntry } from '../srs/sm2';
-import type {
-	DailyPlan,
-	DailyPlanItem,
-	TrainingAttempt,
-	TrainingExercise,
-	TrainingModuleId,
-	ModuleProgress
+import {
+	TRAINING_MODULE_IDS,
+	MODULE_PREREQUISITES,
+	type DailyPlan,
+	type DailyPlanItem,
+	type TrainingAttempt,
+	type TrainingExercise,
+	type TrainingModuleId,
+	type ModuleProgress
 } from './trainingTypes';
+
+export function isModuleUnlocked(
+	module: TrainingModuleId,
+	progress: Partial<Record<TrainingModuleId, ModuleProgress>>,
+	isGuest = false
+): boolean {
+	if (isGuest) return true;
+	const prerequisites = MODULE_PREREQUISITES[module];
+	if (!prerequisites || prerequisites.length === 0) return true;
+	return prerequisites.every((prereq: TrainingModuleId) => {
+		const p = progress[prereq];
+		return Boolean(p && (p.mastered || (p.masteryScore !== null && p.masteryScore >= 0.9)));
+	});
+}
+
+export function createProgressMap(
+	attempts: readonly TrainingAttempt[] = [],
+	isGuest = false
+): Record<TrainingModuleId, ModuleProgress> {
+	const result = {} as Record<TrainingModuleId, ModuleProgress>;
+	for (const id of TRAINING_MODULE_IDS) {
+		const moduleAttempts = attempts.filter((a) => a.module === id);
+		const mastered = moduleAttempts.some((a) => a.score >= 0.9);
+		const masteryScore = moduleAttempts.length > 0 ? Math.max(...moduleAttempts.map((a) => a.score)) : null;
+		result[id] = {
+			module: id,
+			unlocked: false,
+			mastered,
+			masteryScore,
+			attemptCount: moduleAttempts.length,
+			unassistedAttemptCount: moduleAttempts.filter((a) => a.assistance === 'none').length,
+			recentScores: moduleAttempts.slice(-5).map((a) => a.score),
+			lastAttemptAt: moduleAttempts.length > 0 ? Math.max(...moduleAttempts.map((a) => a.completedAt)) : null
+		};
+	}
+
+	for (const id of TRAINING_MODULE_IDS) {
+		result[id].unlocked = isModuleUnlocked(id, result, isGuest);
+	}
+
+	return result;
+}
 
 export const DAILY_TARGET_MINUTES = 10;
 
@@ -95,7 +138,7 @@ export function completedDailyPlanSlots(
 export function generateDailyPlan(input: DailyPlanInput): DailyPlan {
 	const now = input.now ?? Date.now();
 	const attempts = input.attempts ?? [];
-	const progress = input.progress ?? buildProgressMap(attempts);
+	const progress = input.progress ?? createProgressMap(attempts);
 	const targetMinutes = input.targetMinutes ?? DAILY_TARGET_MINUTES;
 	const targetSeconds = Math.max(1, Math.round(targetMinutes * 60));
 	const unlocked = new Set(

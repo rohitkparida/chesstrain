@@ -11,30 +11,45 @@ export interface CalculationExerciseContent extends CalculationExercise {
 
 export const CALCULATION_EXERCISES: readonly CalculationExerciseContent[] = [
 	{
-		id: 'calculation-open-centre', module: 'calculation', type: 'calculation', title: 'Open the centre',
-		estimatedSeconds: 45, difficulty: 1100, concept: 'Develop with tempo and claim the open file.',
-		fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
-		solution: ['e5', 'Nf3', 'Nc6', 'Bb5', 'a6'],
-		acceptedLines: [['e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6']],
-		visualAnnotations: [{ from: 'f1', to: 'b5', color: '#49be7d', label: 'Develop with tempo' }],
-		tags: ['development', 'open-centre']
+		id: 'calculation-fork-tactic',
+		module: 'calculation',
+		type: 'calculation',
+		title: 'Royal Knight Fork',
+		estimatedSeconds: 45,
+		difficulty: 1200,
+		concept: 'Calculate the forced knight fork winning the queen.',
+		fen: 'r1b2rk1/ppp3pp/8/3B4/3Q1n2/8/PPP2PPP/R4RK1 b - - 0 1',
+		solution: ['Ne2+', 'Kh1', 'Nxd4'],
+		acceptedLines: [['Ne2+', 'Kh1', 'Nxd4']],
+		visualAnnotations: [{ from: 'f4', to: 'e2', color: '#49be7d', label: 'Forced knight fork' }],
+		tags: ['tactics', 'fork', 'calculation']
 	},
 	{
-		id: 'calculation-italian-pressure', module: 'calculation', type: 'calculation', title: 'Build pressure',
-		estimatedSeconds: 50, difficulty: 1250, concept: 'Complete development before choosing a plan.',
-		fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 4',
-		solution: ['d3', 'd6', 'O-O', 'O-O', 'Re1'],
-		acceptedLines: [['O-O', 'O-O', 'd3', 'd6', 'Re1']],
-		visualAnnotations: [{ from: 'e1', to: 'g1', color: '#49be7d', label: 'Secure the king' }],
-		tags: ['development', 'king-safety']
+		id: 'calculation-back-rank-strike',
+		module: 'calculation',
+		type: 'calculation',
+		title: 'Back Rank Deflection',
+		estimatedSeconds: 50,
+		difficulty: 1300,
+		concept: 'Calculate the forced line deflecting the defender of the back rank.',
+		fen: '3r2k1/5ppp/8/8/8/8/3R1PPP/6K1 w - - 0 1',
+		solution: ['Rxd8#'],
+		acceptedLines: [['Rxd8#']],
+		visualAnnotations: [{ from: 'd2', to: 'd8', color: '#49be7d', label: 'Back rank mate' }],
+		tags: ['tactics', 'back-rank', 'checkmate']
 	},
 	{
-		id: 'calculation-ruy-lopez', module: 'calculation', type: 'calculation', title: 'Keep the initiative',
-		estimatedSeconds: 55, difficulty: 1350, concept: 'Maintain central tension while improving the worst piece.',
-		fen: 'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 4',
-		solution: ['Bb5', 'O-O', 'O-O', 'Re1', 'd6'],
-		acceptedLines: [['d3', 'd6', 'O-O', 'O-O', 'Re1']],
-		visualAnnotations: [{ from: 'f1', to: 'b5', color: '#49be7d', label: 'Keep pressure on the centre' }],
-		tags: ['initiative', 'calculation']
+		id: 'calculation-pin-exploitation',
+		module: 'calculation',
+		type: 'calculation',
+		title: 'Exploit the Absolute Pin',
+		estimatedSeconds: 55,
+		difficulty: 1350,
+		concept: 'Calculate the attack on the pinned piece defending the king.',
+		fen: 'r1b1k2r/pppp1ppp/8/4q3/1bP5/2N1P3/PP3PPP/R2QKB1R w KQkq - 0 10',
+		solution: ['Qb3', 'Bxc3+', 'bxc3'],
+		acceptedLines: [['Qb3', 'Bxc3+', 'bxc3']],
+		visualAnnotations: [{ from: 'b3', to: 'b4', color: '#49be7d', label: 'Target the pinned bishop' }],
+		tags: ['tactics', 'pin', 'calculation']
 	}
 ];

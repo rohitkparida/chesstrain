@@ -3,7 +3,6 @@
   import { Chess } from 'chess.js';
   import type { TacticsPageData } from './+page';
   import ChessBoard from '../../../components/ChessBoard.svelte';
-  import ContextStrip from '../../../components/ContextStrip.svelte';
   import InstructionBanner from '../../../components/InstructionBanner.svelte';
   import ObjectiveMetrics from '../../../components/ObjectiveMetrics.svelte';
   import TacticsFeedback from './TacticsFeedback.svelte';
@@ -218,8 +217,6 @@
 			.finally(() => { attemptState.coachLoading = false; });
 	}
 </script>
-
-<ContextStrip module="Tactics Training" skill="Pattern Recognition" puzzleNum={puzzleNum} puzzleTotal={puzzles.length} />
 
 <div class="tactics-layout">
   <div class="board-col">

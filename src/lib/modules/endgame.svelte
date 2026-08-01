@@ -99,7 +99,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Endgame practice" task={scenario.goal ?? 'Keep the expected result.'} taskKeywords={['win', 'stalemate', 'king and rook', 'winning result']} onReset={reset} onSkip={nextScenario}>
+<TrainingModuleShell title="Endgame practice" task="Win (or draw if defending) using clean technique." taskKeywords={['Win', 'draw', 'clean technique']} onReset={reset} onSkip={nextScenario}>
   <p class="scenario-meta">{scenario.title}</p>
   <ChessBoard
     fen={currentFen}

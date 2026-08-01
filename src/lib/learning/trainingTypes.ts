@@ -132,6 +132,50 @@ export interface TrainingAttempt {
 	source?: ExerciseSource;
 }
 
+export function createTrainingAttempt(params: {
+	id: string;
+	userId: string;
+	exerciseId: string;
+	module: TrainingModuleId;
+	correct?: boolean;
+	correctness?: number;
+	completion?: number;
+	assistance?: AssistanceLevel;
+	startedAt: number;
+	completedAt: number;
+	tags?: readonly string[];
+	scheduledAt?: number;
+	result?: 'correct' | 'incorrect' | 'slow';
+	positionFingerprint?: string;
+	conceptIds?: readonly string[];
+	source?: ExerciseSource;
+}): TrainingAttempt {
+	const correctness = params.correctness ?? (params.correct ? 1 : 0);
+	const completion = params.completion ?? 1;
+	const assistance = params.assistance ?? 'none';
+	const multiplier = ASSISTANCE_SCORE_MULTIPLIER[assistance] ?? 1;
+	const score = Math.max(0, Math.min(1, correctness * completion * multiplier));
+
+	return {
+		id: params.id,
+		userId: params.userId,
+		exerciseId: params.exerciseId,
+		module: params.module,
+		score,
+		assistance,
+		startedAt: params.startedAt,
+		completedAt: params.completedAt,
+		durationMs: Math.max(0, params.completedAt - params.startedAt),
+		correct: params.correct,
+		result: params.result,
+		tags: params.tags,
+		scheduledAt: params.scheduledAt,
+		positionFingerprint: params.positionFingerprint,
+		conceptIds: params.conceptIds,
+		source: params.source
+	};
+}
+
 export type DailyPlanReason = 'due-review' | 'weakest-unlocked' | 'new';
 
 export interface DailyPlanItem {

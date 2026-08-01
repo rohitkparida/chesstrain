@@ -148,7 +148,6 @@
         { label: 'Plan ranking', value: `${rubric.plan}/30` },
         { label: 'Key features found', value: `${rubric.observations}/40`, note: rubric.matchedEvidence.join(', ') || 'No key features matched' }
       ]}
-      note="This scores agreement with a disclosed reference model. It does not claim there is only one valid positional explanation."
     />
   {/if}
   {#if rubric}<button class="continue" onclick={() => { rubric = null; feedback = ''; step = 1; startedAt = Date.now(); }}>Try this position again</button>{/if}

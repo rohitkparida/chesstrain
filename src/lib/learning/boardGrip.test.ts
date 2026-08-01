@@ -31,11 +31,14 @@ describe('board grip helpers', () => {
 		expect(round.answers).toEqual([]);
 	});
 
-	it('uses the same canonical square in the name-square prompt and answer', () => {
-		const round = makeBoardGripRound('name-square', new Chess().fen(), () => 0.5);
+	it('uses correct prompts for find-square and name-square drills', () => {
+		const findRound = makeBoardGripRound('find-square', new Chess().fen(), () => 0.5);
+		expect(findRound.prompt).toBe(`Find ${findRound.targetSquare}`);
+		expect(findRound.answers).toEqual([findRound.targetSquare]);
 
-		expect(round.prompt).toBe(`Find ${round.targetSquare}`);
-		expect(round.answers).toEqual([round.targetSquare]);
+		const nameRound = makeBoardGripRound('name-square', new Chess().fen(), () => 0.5);
+		expect(nameRound.prompt).toBe('Name the highlighted square.');
+		expect(nameRound.answers).toEqual([nameRound.targetSquare]);
 	});
 
 	it('maps equal name-square probability buckets to all four board orientations', () => {
@@ -78,6 +81,6 @@ describe('board grip helpers', () => {
 		const second = nextBoardGripRound(first, () => 0);
 
 		expect(first.kind).toBe('name-square');
-		expect(second.kind).toBe('attackers');
+		expect(second.kind).toBe('find-square');
 	});
 });

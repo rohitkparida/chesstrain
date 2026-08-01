@@ -88,7 +88,6 @@
 
 <main class="profile-page">
   <header class="page-header">
-    <p class="eyebrow">ACCOUNT</p>
     <h1>Profile</h1>
   </header>
 
@@ -98,8 +97,7 @@
     </div>
     <label>
       Username
-      <input class="form-control" value={auth.username} readonly aria-describedby="username-help" />
-      <span id="username-help" class="field-help">Account name</span>
+      <input class="form-control" value={auth.username} readonly />
     </label>
     <label>
       Display name
@@ -196,8 +194,6 @@
 <style>
   .profile-page { width: min(100%, var(--content-width)); margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
   .page-header h1 { margin: 0 0 0.4rem; color: var(--text-1); font-size: 1.7rem; }
-  .page-header p:last-child { margin: 0; max-width: 620px; color: var(--text-4); line-height: 1.5; }
-  .eyebrow { margin: 0 0 0.4rem; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; }
   .profile-section { display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border); padding-top: 1.25rem; }
   .section-heading h2 { margin: 0; color: var(--text-1); font-size: 1.05rem; }
   label { display: grid; gap: 0.35rem; color: var(--text-2); font-weight: 700; font-size: 0.88rem; }

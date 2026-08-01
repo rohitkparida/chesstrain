@@ -30,10 +30,8 @@
 <main class="dictionary-page">
   <header class="page-header">
     <h1>Chess dictionary</h1>
-    <p>Visual definitions for chess terms.</p>
-    <label class="search-label" for="dictionary-search">Search chess terms</label>
     <div class="search-wrap">
-      <input id="dictionary-search" class="search" bind:value={query} placeholder="Pin, tempo, endgame..." />
+      <input id="dictionary-search" class="search" bind:value={query} placeholder="Pin, tempo, endgame..." aria-label="Search chess terms" />
       {#if query}<button class="clear-search" type="button" onclick={clearSearch} aria-label="Clear search">×</button>{/if}
     </div>
     <span class="result-count">{filteredEntries.length} {filteredEntries.length === 1 ? 'term' : 'terms'}</span>
@@ -67,22 +65,19 @@
 <style>
   .dictionary-page { width: min(100%, var(--content-width)); margin: 0 auto; display: grid; gap: 1.5rem; }
   .page-header { display: grid; gap: 0.35rem; }
-  .page-header h1, .page-header p { margin: 0; }
-  .page-header h1 { color: var(--text-1); font-size: 1.8rem; }
-  .page-header p:last-child { color: var(--text-4); line-height: 1.5; }
-  .search-label { margin-top: 0.65rem; color: var(--text-2); font-size: 0.8rem; font-weight: 700; }
+  .page-header h1 { margin: 0; color: var(--text-1); font-size: 1.8rem; }
   .search-wrap { position: relative; width: min(100%, 520px); }
   .search { width: 100%; padding: 0.7rem 2.3rem 0.7rem 0.7rem; border: 1px solid var(--border-sub); border-radius: 6px; background: var(--surface-2); color: var(--text-1); font: inherit; }
   .search:focus { border-color: var(--accent); outline: 2px solid var(--accent-border); }
   .clear-search { position: absolute; top: 50%; right: 0.45rem; transform: translateY(-50%); width: 1.8rem; height: 1.8rem; border: 0; background: transparent; color: var(--text-4); font-size: 1.2rem; cursor: pointer; }
   .clear-search:hover { color: var(--text-1); }
-  .result-count { color: var(--text-5); font-size: 0.75rem; }
+  .result-count { color: var(--text-4); font-size: 0.75rem; }
   .dictionary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .entry { border-top: 1px solid var(--border); background: var(--surface-1); }
   .entry-heading { display: flex; align-items: center; gap: 0.75rem; min-height: 4.2rem; padding: 0.85rem 0.9rem; }
   .term-copy { display: grid; gap: 0.25rem; }
   .term-copy strong { color: var(--text-1); font-size: 1.05rem; }
-  .term-copy span { color: var(--accent); font-size: 0.82rem; font-weight: 700; }
+  .term-copy span { color: var(--text-4); font-size: 0.82rem; font-weight: 700; }
   .entry-body { display: grid; gap: 0; border-top: 1px solid var(--border); }
   .more { justify-self: start; margin: 0 0.9rem; padding: 0.35rem 0; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
   .entry-copy { display: grid; gap: 0.45rem; padding: 0.9rem; }

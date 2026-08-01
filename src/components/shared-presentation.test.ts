@@ -40,9 +40,14 @@ describe('shared training presentation', () => {
     expect(task.querySelector('.instruction-banner')).toBeNull();
   });
 
-  it('labels metrics as feedback and defaults to a concise result', () => {
+  it('labels metrics as feedback and defaults to a concise result without a redundant Result heading', () => {
     render(ObjectiveMetrics, { items: [{ label: 'Accuracy', value: '80%' }] });
     expect(screen.getByRole('region', { name: 'Result' })).toHaveAttribute('data-stage', 'feedback');
-    expect(screen.getByRole('heading', { name: 'Result' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Result' })).not.toBeInTheDocument();
+  });
+
+  it('renders heading when non-empty title other than Result is provided', () => {
+    render(ObjectiveMetrics, { title: 'Tactics evidence', items: [{ label: 'Accuracy', value: '80%' }] });
+    expect(screen.getByRole('heading', { name: 'Tactics evidence' })).toBeInTheDocument();
   });
 });

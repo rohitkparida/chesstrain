@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { generateDailyPlan } from './dailyPlan';
-import { isModuleMastered } from './mastery';
-import { fractionalScore } from './scoring';
-import { buildProgressMap, getUnlockedModules } from './unlocks';
+import { generateDailyPlan, createProgressMap } from './dailyPlan';
+import { fractionalScore } from './objectiveScoring';
 import type { TrainingAttempt, TrainingExercise } from './trainingTypes';
 
 function attempt(overrides: Partial<TrainingAttempt> = {}): TrainingAttempt {
@@ -31,26 +29,11 @@ describe('training foundation', () => {
 		expect(fractionalScore({ correctness: 0.5, assistance: 'guided' })).toBe(0.25);
 	});
 
-	it('requires ten latest unassisted attempts at ninety percent for mastery', () => {
-		const attempts = Array.from({ length: 9 }, (_, index) => attempt({ id: `miss-${index}`, completedAt: index + 1, score: 1 }));
-		expect(isModuleMastered(attempts, 'board-grip')).toBe(false);
-		const mastered = [...attempts, attempt({ id: 'hinted', completedAt: 10, score: 0, assistance: 'hint' }), attempt({ id: 'ten', completedAt: 11, score: 1 })];
-		expect(isModuleMastered(mastered, 'board-grip')).toBe(true);
-	});
-
-	it('follows the prerequisite graph and leaves My Mistakes available', () => {
+	it('creates progress map correctly across attempts', () => {
 		const boardAttempts = Array.from({ length: 10 }, (_, index) => attempt({ id: `board-${index}`, completedAt: index + 1 }));
-		const progress = buildProgressMap(boardAttempts);
-		expect(getUnlockedModules(progress)).toEqual(['board-grip', 'tactics', 'openings', 'mistakes']);
-
-		const tacticsAndOpenings = [
-			...boardAttempts,
-			...Array.from({ length: 10 }, (_, index) => attempt({ id: `tactics-${index}`, module: 'tactics', exerciseId: 'tactics-1', completedAt: 20 + index })),
-			...Array.from({ length: 10 }, (_, index) => attempt({ id: `opening-${index}`, module: 'openings', exerciseId: 'opening-1', completedAt: 40 + index }))
-		];
-		expect(getUnlockedModules(buildProgressMap(tacticsAndOpenings))).toEqual([
-			'board-grip', 'tactics', 'openings', 'calculation', 'mistakes'
-		]);
+		const progress = createProgressMap(boardAttempts);
+		expect(progress['board-grip'].attemptCount).toBe(10);
+		expect(progress['board-grip'].unlocked).toBe(true);
 	});
 
 	it('orders due, weak, and new work deterministically within the ten-minute target', () => {

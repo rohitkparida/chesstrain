@@ -155,7 +155,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     const userId = get(sessionStore).userId ?? 'local-player';
     const cached = parseCachedMistakes<Mistake>(localStorage.getItem(mistakeCacheKey(userId)), userId);
     if (cached) { username = cached.username; mistakes = cached.mistakes; status = `Loaded ${mistakes.length} saved mistake${mistakes.length === 1 ? '' : 's'}.`; }
-    else username = get(profileStore).chessComUsername;
+    if (!username) username = get(profileStore).chessComUsername;
     syncUnsubscribe = mistakeSyncStore.subscribe((state) => {
       syncState = state;
       if (state.status === 'syncing' || state.status === 'analyzing') analyzing = true;
@@ -164,8 +164,10 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       if (state.status === 'paused' || state.status === 'error') { analyzing = false; backgroundCoordinator = null; }
       if (state.error) status = state.error;
     });
-    backgroundCoordinator = startMistakeSync(userId, username);
-    void loadBackgroundMistakes();
+    if (username) {
+      backgroundCoordinator = startMistakeSync(userId, username);
+      void loadBackgroundMistakes();
+    }
     return () => { syncUnsubscribe?.(); };
   });
   onDestroy(() => { if (analyzing) persistMistakes(); engine?.terminate(); });

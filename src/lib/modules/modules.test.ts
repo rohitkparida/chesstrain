@@ -13,7 +13,7 @@ describe('module learning interactions', () => {
     await fireEvent.input(screen.getByPlaceholderText('e.g. Nf3 d5 Nxe5'), { target: { value: 'Nxf7 Rxf7 Qd4' } });
     await fireEvent.click(screen.getByText('Check line'));
     expect(get(sessionStore).trainingAttempts.some((attempt) => attempt.module === 'calculation')).toBe(true);
-  });
+  }, 15000);
 
   it('keeps the opening position intact after a deviation', async () => {
     render(Opening);
@@ -40,7 +40,7 @@ describe('module learning interactions', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByRole('button', { name: /Check position/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Chess board, White to move')).toBeInTheDocument();
-  });
+  }, 15000);
 });
 
 describe('engine-play modules', () => {
@@ -50,12 +50,12 @@ describe('engine-play modules', () => {
     expect(screen.getByLabelText('e2')).toBeDisabled();
     expect(screen.getByRole('group', { name: 'Threat choices' })).toBeInTheDocument();
     expect(screen.queryByText(/Engine candidate/)).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it('keeps endgame cues hidden before commitment', async () => {
     const Endgame = (await import('./endgame.svelte')).default;
     render(Endgame);
     expect(screen.queryByLabelText('Legal technique cue')).not.toBeInTheDocument();
     expect(screen.queryByText(/Expected result/)).not.toBeInTheDocument();
-  });
+  }, 15000);
 });

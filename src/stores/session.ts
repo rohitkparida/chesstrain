@@ -8,8 +8,7 @@ import type { SRSEntry } from '$lib/srs/sm2';
 import { calculateSRS } from '$lib/srs/sm2';
 import { GUEST_USERNAME, LOCAL_ACCOUNT_USERNAME } from '$lib/account/localAuth';
 import {
-	buildProgressMap,
-	buildGuestProgressMap,
+	createProgressMap,
 	createTrainingAttempt,
 	type DailyPlan,
 	type ModuleProgress,
@@ -66,14 +65,14 @@ const defaultSession: SessionState = {
 	lastFailureTag: null,
 	rebuildCount: 0,
 	trainingAttempts: [],
-	moduleProgress: buildProgressMap([]),
+	moduleProgress: createProgressMap([]),
 	dailyPlan: null,
 };
 
 const guestSessionDefaults: SessionState = {
 	...defaultSession,
 	userId: GUEST_USERNAME,
-	moduleProgress: buildGuestProgressMap()
+	moduleProgress: createProgressMap([], true)
 };
 
 let sessionOwner = LOCAL_ACCOUNT_USERNAME;
@@ -81,7 +80,7 @@ let sessionOwner = LOCAL_ACCOUNT_USERNAME;
 function loadFromStorage(username = sessionOwner): Partial<SessionState> {
   try {
     const raw = readSession(username);
-    if (raw) return { ...raw, moduleProgress: buildProgressMap(raw.trainingAttempts) };
+    if (raw) return { ...raw, moduleProgress: createProgressMap(raw.trainingAttempts, username === GUEST_USERNAME) };
   } catch {}
   return {};
 }
@@ -198,7 +197,7 @@ export const recordPuzzleAttempt = (
         scheduledAt: result.srs.nextScheduledDate
 	      }],
 		trainingAttempts,
-		moduleProgress: buildProgressMap(trainingAttempts)
+		moduleProgress: createProgressMap(trainingAttempts, s.userId === GUEST_USERNAME)
     };
   });
 
@@ -241,7 +240,7 @@ export function recordTrainingAttempt(params: {
 		});
 		recorded = { ...recorded, positionFingerprint: params.positionFingerprint, conceptIds: params.conceptIds, source: params.source };
 		const trainingAttempts = [...state.trainingAttempts, recorded].slice(-500);
-		return { ...state, trainingAttempts, moduleProgress: buildProgressMap(trainingAttempts), srs: { ...state.srs, [params.exerciseId]: { puzzleId: params.exerciseId, ...next } } };
+		return { ...state, trainingAttempts, moduleProgress: createProgressMap(trainingAttempts, state.userId === GUEST_USERNAME), srs: { ...state.srs, [params.exerciseId]: { puzzleId: params.exerciseId, ...next } } };
 	});
 	return recorded;
 }
@@ -276,7 +275,7 @@ export const resetSession = () => {
 		userId: sessionOwner,
 		ratings: { ...defaultSession.ratings },
 		trainingAttempts: [],
-		moduleProgress: buildProgressMap([]),
+		moduleProgress: createProgressMap([], sessionOwner === GUEST_USERNAME),
 		dailyPlan: null
 	});
 };

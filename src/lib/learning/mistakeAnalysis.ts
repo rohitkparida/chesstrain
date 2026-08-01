@@ -8,9 +8,35 @@ export const MISTAKE_ANALYSIS_VERSION = 'stockfish-v2';
 export const QUICK_ANALYSIS_MS = 150;
 export const VERIFY_ANALYSIS_MS = 750;
 export const QUICK_THRESHOLD_CP = 60;
-export const MISTAKE_THRESHOLD_CP = 80;
+export const MISTAKE_THRESHOLD_CP = 150;
 
 export interface AnalyzedMove { candidate: GameMoveCandidate; game: ImportedChessComGame; before: EngineEval; after: EngineEval; }
+
+export function isTrivialHangingPieceBlunder(candidate: GameMoveCandidate): boolean {
+	if (!candidate || !candidate.move || !candidate.afterFen) return false;
+	const piece = candidate.move.piece;
+	if (!['q', 'r', 'b', 'n'].includes(piece)) return false;
+
+	try {
+		const targetSquare = candidate.move.to;
+		const game = new Chess(candidate.afterFen);
+		const opponentMoves = game.moves({ verbose: true });
+		const opponentCaptures = opponentMoves.filter((m) => m.to === targetSquare);
+		if (opponentCaptures.length === 0) return false;
+
+		for (const cap of opponentCaptures) {
+			const afterCapGame = new Chess(candidate.afterFen);
+			afterCapGame.move(cap);
+			const playerRecaptures = afterCapGame.moves({ verbose: true }).filter((m) => m.to === targetSquare);
+			if (playerRecaptures.length === 0) {
+				return true;
+			}
+		}
+		return false;
+	} catch {
+		return false;
+	}
+}
 
 export function isSacrificeIdea(fen: string, evaluation: EngineEval): boolean {
 	if (evaluation.principalVariation.length < 2) return false;
@@ -42,6 +68,7 @@ export function mistakeKind(before: EngineEval, after: EngineEval, lossCp: numbe
 
 export function isPuzzleWorthy(analysis: AnalyzedMove, verificationStatus: 'provisional' | 'verified'): boolean {
 	if (!analysis.before.bestMove || analysis.before.principalVariation.length === 0) return false;
+	if (isTrivialHangingPieceBlunder(analysis.candidate)) return false;
 	const playedMove = `${analysis.candidate.move.from}${analysis.candidate.move.to}${analysis.candidate.move.promotion ?? ''}`;
 	if (analysis.before.bestMove === playedMove) return false;
 	const lossCp = Math.max(0, Math.round(playerPerspectiveLoss(analysis.before, analysis.after)));
@@ -50,6 +77,27 @@ export function isPuzzleWorthy(analysis: AnalyzedMove, verificationStatus: 'prov
 	const sacrifice = isSacrificeIdea(analysis.candidate.fen, analysis.before);
 	const threshold = verificationStatus === 'verified' ? MISTAKE_THRESHOLD_CP : QUICK_THRESHOLD_CP;
 	return forcedMateChange || sacrifice || lossCp >= threshold;
+}
+
+export function selectTopGameMistakes<T extends { gameId?: string; lossCp?: number }>(
+	items: T[],
+	maxPerGame = 2
+): T[] {
+	const groups = new Map<string, T[]>();
+	for (const item of items) {
+		const key = item.gameId ?? '';
+		const group = groups.get(key) ?? [];
+		group.push(item);
+		groups.set(key, group);
+	}
+
+	const result: T[] = [];
+	const max = Math.max(0, maxPerGame);
+	for (const group of groups.values()) {
+		group.sort((a, b) => (b.lossCp ?? 0) - (a.lossCp ?? 0));
+		result.push(...group.slice(0, max));
+	}
+	return result;
 }
 
 export async function analyzeCandidate(engine: StockfishEngine, game: ImportedChessComGame, candidate: GameMoveCandidate, signal?: AbortSignal): Promise<AnalyzedMove | null> {

@@ -58,7 +58,6 @@
 </script>
 
 <main class="login-page">
-  <p class="eyebrow">ACCOUNT</p>
   <h1>Welcome back</h1>
   <form onsubmit={unlock}>
     <label for="username">Username</label>
@@ -74,17 +73,16 @@
   <div class="guest-divider"><span>or</span></div>
   <ActionButton variant="quiet" type="button" onclick={continueAsGuest}>Continue as guest</ActionButton>
 
-  <p class="notice">Guest mode unlocks every module; progress stays separate.</p>
+
 </main>
 
 <style>
   .login-page { width: min(100%, var(--content-width)); margin: 8vh auto 0; }
-  .eyebrow { margin: 0 0 0.4rem; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; }
   h1 { margin: 0; color: var(--text-1); font-size: 1.8rem; }
   form { display: grid; gap: 0.65rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }
   label { color: var(--text-2); font-size: 0.88rem; font-weight: 700; }
   .error { margin: 0; color: var(--error); font-size: 0.85rem; }
-  .notice { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1rem; color: var(--text-5); font-size: 0.78rem; line-height: 1.45; }
+
   .guest-divider { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0 0.65rem; color: var(--text-5); font-size: 0.75rem; }
   .guest-divider::before, .guest-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
   .guest-divider span { padding: 0 0.25rem; }

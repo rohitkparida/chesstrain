@@ -2,6 +2,18 @@ import type { DrillDefinition } from '../types';
 import { makeBoardGripRound, randomBoardGripView } from '$lib/learning/boardGrip';
 import { randomRealisticFen } from '$lib/learning/nameTheSquare';
 
+function extractTargetSquare(previousFingerprint?: string): string | undefined {
+  if (!previousFingerprint) return undefined;
+  if (/^[a-h][1-8]$/i.test(previousFingerprint)) {
+    return previousFingerprint.toLowerCase();
+  }
+  const parts = previousFingerprint.split(':');
+  if (parts.length > 1 && /^[a-h][1-8]$/i.test(parts[1])) {
+    return parts[1].toLowerCase();
+  }
+  return undefined;
+}
+
 export const drill: DrillDefinition<'text-entry'> = {
   id: 'vision.name-square',
   module: 'board-grip',
@@ -10,8 +22,9 @@ export const drill: DrillDefinition<'text-entry'> = {
   interaction: 'text-entry',
   version: 1,
   generate(context) {
+    const previousTargetSquare = extractTargetSquare(context.previousFingerprint) ?? context.previousFingerprint;
     const fen = randomRealisticFen('', context.random);
-    const round = makeBoardGripRound('name-square', fen, context.random);
+    const round = makeBoardGripRound('name-square', fen, context.random, previousTargetSquare);
     const view = randomBoardGripView('name-square', context.random);
     const targetSquare = round.targetSquare ?? round.answers[0];
 

@@ -106,7 +106,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Choosing a Move" task={scenario.prompt} taskKeywords={['changed', 'forcing replies', 'practical candidates']} onReset={reset} onSkip={nextScenario}>
+<TrainingModuleShell title="Choosing a Move" task="Complete the checklist before every move." taskKeywords={['checklist']} onReset={reset} onSkip={nextScenario}>
   <p class="scenario-meta">Position after {scenario.opponentMove}</p>
 
   <ChessBoard
@@ -159,7 +159,7 @@
       { label: 'Process score', value: `${Math.round(process.processScore * 100)}%` },
       { label: 'Move result', value: lastMoveQuality === null ? 'Pending' : lastMoveQuality === 1 ? 'Kept the expected result' : 'Needs review' },
       { label: 'Positions attempted', value: `${rounds}` }
-    ]} note="Process quality measures the checklist. Move quality is scored separately from the process." />
+    ]} />
   {/if}
 
   {#if discoveredCandidate || discoveredReply}

@@ -25,6 +25,13 @@ export function accuracyPercent(correct: number, attempts: number): number | nul
 	return Math.round((correct / attempts) * 100);
 }
 
+export function fractionalScore(params: { correctness?: number; assistance?: 'none' | 'hint' | 'guided' | 'solution' }): number {
+	const correctness = params.correctness ?? 1;
+	const assistance = params.assistance ?? 'none';
+	const mult = assistance === 'hint' ? 0.75 : assistance === 'guided' ? 0.5 : assistance === 'solution' ? 0 : 1;
+	return Math.max(0, Math.min(1, correctness * mult));
+}
+
 export function scoreDecisionEvidence(params: {
 	threat: string;
 	candidates: string;

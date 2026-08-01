@@ -105,3 +105,36 @@ export interface LazyDrillEntry<K extends keyof InteractionContracts = keyof Int
   interaction: K;
   load: () => Promise<DrillDefinition<K>>;
 }
+
+const KEY_TARGET_PHRASES = [
+  'safe king squares',
+  'undefended black',
+  'undefended white',
+  'undefended',
+  'pinned',
+  'black',
+  'white',
+  'move sequence',
+  'position',
+  'plan'
+];
+
+export function extractKeywordsFromPrompt(prompt: string): string[] {
+  if (!prompt) return [];
+  const lower = prompt.toLowerCase();
+  const keywords: string[] = [];
+
+  for (const phrase of KEY_TARGET_PHRASES) {
+    if (lower.includes(phrase.toLowerCase())) {
+      keywords.push(phrase);
+    }
+  }
+
+  const coords = prompt.match(/[a-h][1-8]/gi);
+  if (coords) {
+    keywords.push(...coords);
+  }
+
+  return Array.from(new Set(keywords));
+}
+

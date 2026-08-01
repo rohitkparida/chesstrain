@@ -37,67 +37,67 @@ export interface DecisionProcessScore {
 	commitmentRecorded: boolean;
 }
 
-const e4AfterE5 = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
-const d5AfterD5 = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
-const e4AfterNf6 = 'rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2';
+const sharpNajdorfFen = 'r1bqk2r/pp2bppp/2n1pn2/2pp4/3P4/2PBPN2/PP1N1PPP/R1BQK2R w KQkq - 0 8';
+const pinnedThreatFen = 'r1b1k2r/pppp1ppp/8/4q3/1bP5/2N1P3/PP3PPP/R2QKB1R w KQkq - 0 10';
+const centralBreakFen = 'r1bq1rk1/pp1nbppp/2p1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R1BQ1RK1 w - - 0 9';
 
 const threats: readonly DecisionChoice[] = [
-	{ id: 'central-control', label: 'The opponent is contesting the centre.' },
-	{ id: 'development-race', label: 'The opponent is racing to develop.' },
-	{ id: 'king-safety', label: 'The opponent is preparing to attack my king.' },
+	{ id: 'central-break', label: 'The opponent is preparing a central pawn break.' },
+	{ id: 'pinned-defender', label: 'The opponent is putting pressure on my pinned defender.' },
+	{ id: 'flank-attack', label: 'The opponent is launching a flank attack against my king.' },
 ];
 
 export const DECISION_SCENARIOS: readonly DecisionScenario[] = [
 	{
-		id: 'decision-after-e5', module: 'decision', type: 'decision', estimatedSeconds: 90,
-		title: 'Respond to ...e5', fen: e4AfterE5, bestMove: 'g1f3',
-		opponentMove: '...e5', prompt: 'What changed after the opponent claimed the centre?',
-		threatOptions: threats, expectedThreat: 'central-control',
+		id: 'decision-najdorf-break', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		title: 'Critical Central Decision', fen: sharpNajdorfFen, bestMove: 'e1g1',
+		opponentMove: '...c5', prompt: 'Black challenges the centre. Identify the critical threat and calculate candidate responses.',
+		threatOptions: threats, expectedThreat: 'central-break',
 		candidateOptions: [
-			{ id: 'develop-knight', label: 'Nf3: develop and pressure e5', uci: 'g1f3' },
-			{ id: 'develop-bishop', label: 'Bc4: develop with a tempo idea', uci: 'f1c4' },
-			{ id: 'strike-centre', label: 'd4: challenge the centre immediately', uci: 'd2d4' },
+			{ id: 'castle-king', label: 'O-O: complete king safety first', uci: 'e1g1' },
+			{ id: 'capture-pawn', label: 'dxc5: trade pawns immediately', uci: 'd4c5' },
+			{ id: 'push-pawn', label: 'e5: push and close the centre', uci: 'e4e5' },
 		],
 		refutationOptions: [
-			{ id: 'black-develops', label: 'Black develops with ...Nc6 or ...Nf6.' },
+			{ id: 'black-counter-strikes', label: 'Black counter-strikes in the centre with ...e5 or ...d5.' },
 			{ id: 'black-wins-queen', label: 'Black wins the queen by force.' },
 			{ id: 'black-is-mated', label: 'Black is checkmated immediately.' },
 		],
-		expectedRefutation: 'black-develops', acceptableMoves: ['g1f3', 'f1c4', 'd2d4'],
+		expectedRefutation: 'black-counter-strikes', acceptableMoves: ['e1g1', 'd4c5', 'e4e5'],
 	},
 	{
-		id: 'decision-after-d5', module: 'decision', type: 'decision', estimatedSeconds: 90,
-		title: 'Respond to ...d5', fen: d5AfterD5, bestMove: 'e4d5',
-		opponentMove: '...d5', prompt: 'The opponent has challenged your e-pawn. Compare forcing replies.',
-		threatOptions: threats, expectedThreat: 'central-control',
+		id: 'decision-pinned-piece', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		title: 'Respond to Pinned Piece Pressure', fen: pinnedThreatFen, bestMove: 'd1b3',
+		opponentMove: '...Bb4', prompt: 'Black pins your c3 knight to the king. Find the best candidate moves.',
+		threatOptions: threats, expectedThreat: 'pinned-defender',
 		candidateOptions: [
-			{ id: 'take-centre', label: 'exd5: clarify the centre', uci: 'e4d5' },
-			{ id: 'develop-knight', label: 'Nc3: develop and keep tension', uci: 'b1c3' },
-			{ id: 'build-centre', label: 'd4: build a broad pawn centre', uci: 'd2d4' },
+			{ id: 'queen-counter', label: 'Qb3: counter-attack the b4 bishop and b7 pawn', uci: 'd1b3' },
+			{ id: 'bishop-pin-break', label: 'Bd2: unpin the knight passively', uci: 'c1d2' },
+			{ id: 'castle-king', label: 'O-O: ignore the pin and castle', uci: 'e1g1' },
 		],
 		refutationOptions: [
-			{ id: 'black-recaptures', label: 'Black recaptures or develops naturally.' },
-			{ id: 'black-loses-castling', label: 'Black loses castling rights by rule.' },
+			{ id: 'black-trades-damages-structure', label: 'Black trades on c3 and doubles your c-pawns.' },
+			{ id: 'black-loses-castling', label: 'Black loses castling rights.' },
 			{ id: 'black-has-no-move', label: 'Black has no legal reply.' },
 		],
-		expectedRefutation: 'black-recaptures', acceptableMoves: ['e4d5', 'b1c3', 'd2d4'],
+		expectedRefutation: 'black-trades-damages-structure', acceptableMoves: ['d1b3', 'c1d2', 'e1g1'],
 	},
 	{
-		id: 'decision-after-nf6', module: 'decision', type: 'decision', estimatedSeconds: 90,
-		title: 'Respond to ...Nf6', fen: e4AfterNf6, bestMove: 'e4e5',
-		opponentMove: '...Nf6', prompt: 'The knight attacks e4. Identify the practical candidates before moving.',
-		threatOptions: threats, expectedThreat: 'development-race',
+		id: 'decision-central-lever', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		title: 'Evaluate Central Leverage', fen: centralBreakFen, bestMove: 'b2b3',
+		opponentMove: '...d5', prompt: 'The position has reached maximum central tension. Calculate your key candidate moves.',
+		threatOptions: threats, expectedThreat: 'central-break',
 		candidateOptions: [
-			{ id: 'advance-pawn', label: 'e5: gain space and chase the knight', uci: 'e4e5' },
-			{ id: 'develop-knight', label: 'Nc3: protect and develop', uci: 'b1c3' },
-			{ id: 'develop-bishop', label: 'Bc4: develop with an active target', uci: 'f1c4' },
+			{ id: 'fianchetto-prep', label: 'b3: prepare Ba3 or Bb2 to control long diagonal', uci: 'b2b3' },
+			{ id: 'pawn-exchange', label: 'cxd5: resolve tension by taking on d5', uci: 'c4d5' },
+			{ id: 'rook-centralize', label: 'Re1: centralize the rook behind the e-pawn', uci: 'f1e1' },
 		],
 		refutationOptions: [
-			{ id: 'black-chases', label: 'Black gains a tempo by chasing the advanced piece.' },
-			{ id: 'black-loses-queen', label: 'Black drops the queen immediately.' },
-			{ id: 'black-is-stalemated', label: 'Black is stalemated immediately.' },
+			{ id: 'black-simplifies', label: 'Black simplifies the position with ...dxc4 or ...Nxd5.' },
+			{ id: 'black-drops-queen', label: 'Black drops the queen on the spot.' },
+			{ id: 'black-is-stalemated', label: 'Black is stalemated.' },
 		],
-		expectedRefutation: 'black-chases', acceptableMoves: ['e4e5', 'b1c3', 'f1c4'],
+		expectedRefutation: 'black-simplifies', acceptableMoves: ['b2b3', 'c4d5', 'f1e1'],
 	},
 ];
 

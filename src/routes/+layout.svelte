@@ -7,7 +7,7 @@
   import { profileStore, switchProfileOwner, updateProfile } from '../stores/profile';
   import { profileInitials, type ThemePreference } from '$lib/account/profile';
   import { mistakeSyncStore, startMistakeSync } from '../stores/mistakeSync';
-  import { type Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
 
   let { children } = $props<{ children: Snippet }>();
   let light = $state(false);
@@ -15,6 +15,14 @@
   let profileBadge = $derived(profileInitials($profileStore));
   let authenticated = $derived($authStore.authenticated);
   let mistakeSync = $derived($mistakeSyncStore);
+
+  onMount(() => {
+    const auth = $authStore;
+    const username = $profileStore.chessComUsername;
+    if (auth.authenticated && !auth.guest && username) {
+      startMistakeSync(auth.username, username);
+    }
+  });
 
   $effect(() => {
     const path = routePath(page.url.pathname);

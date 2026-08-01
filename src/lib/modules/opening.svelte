@@ -60,8 +60,8 @@
 
 <TrainingModuleShell
   title="Opening Prep Repertoire Trainer"
-  task="Recall the line and commit each move."
-  taskKeywords={['Recall', 'commit']}
+  task="Play through your opening repertoire."
+  taskKeywords={['opening repertoire']}
   resetLabel="Restart opening line"
   onReset={reset}
   onSkip={reset}

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DAILY_PLAN_EXERCISES, TRAINING_MODULES } from '../../components/trainingCatalog';
-import { generateDailyPlan } from './dailyPlan';
+import { createProgressMap, generateDailyPlan } from './dailyPlan';
 import { PoolExerciseGenerator } from './generator';
-import { buildProgressMap } from './unlocks';
 import type { TrainingAttempt } from './trainingTypes';
 
 const attempt = (module: TrainingAttempt['module'], exerciseId: string, score = 1): TrainingAttempt => ({
@@ -15,7 +14,7 @@ describe('product learning contracts', () => {
   });
 
   it('keeps Today finite while the generator can continue selecting module work', () => {
-    const progress = buildProgressMap([attempt('board-grip', 'board-grip-daily-1')]);
+    const progress = createProgressMap([attempt('board-grip', 'board-grip-daily-1')]);
     const plan = generateDailyPlan({ userId: 'test-user', exercises: DAILY_PLAN_EXERCISES, progress, attempts: [attempt('board-grip', 'board-grip-daily-1')] });
     expect(plan.items.length).toBeGreaterThan(0);
     const generator = new PoolExerciseGenerator({ list: (module) => DAILY_PLAN_EXERCISES.filter((exercise) => exercise.module === module) });

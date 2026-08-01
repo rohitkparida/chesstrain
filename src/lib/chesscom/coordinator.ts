@@ -1,5 +1,5 @@
 import { StockfishEngine, StockfishCancellationError, StockfishEngineTerminatedError } from '$lib/chess/engine';
-import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, verifyCandidate } from '$lib/learning/mistakeAnalysis';
+import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, selectTopGameMistakes, verifyCandidate } from '$lib/learning/mistakeAnalysis';
 import { ChessComApiError, createChessComClient, fetchLatestEligibleGames, fetchNewEligibleGames } from './client';
 import { createIndexedDbMistakeRepository } from './repository';
 import type { ChessComClient } from './types';
@@ -88,24 +88,35 @@ export class MistakeSyncCoordinator {
 				const game = newGames[gameIndex];
 				const candidates = candidatesForGame(game);
 				const firstPly = gameIndex === job.gameIndex ? job.plyIndex : 0;
+				const gameExercises: PersonalMistakeExercise[] = [];
 				for (let plyIndex = firstPly; plyIndex < candidates.length; plyIndex += 1) {
 					job.gameIndex = gameIndex; job.plyIndex = plyIndex; job.updatedAt = Date.now();
 					await this.repository.putJob(job);
 					const quickAnalysis = await quickAnalyzeCandidate(this.engine, game, candidates[plyIndex], signal);
 					const provisional = quickAnalysis ? exerciseFromAnalysis(quickAnalysis, 'provisional') : null;
 					if (provisional) {
-						found.push(provisional);
-						await this.repository.putMistakes(this.userId, [provisional]);
-						this.update({ mistakesFound: existingMistakes.length + found.length });
+						gameExercises.push(provisional);
 					}
 					if (quickAnalysis) {
 						job.pass = 'verify'; job.updatedAt = Date.now(); await this.repository.putJob(job);
 						const verified = await verifyCandidate(this.engine, quickAnalysis, signal);
 						const verifiedExercise = exerciseFromAnalysis(verified, 'verified');
-						if (verifiedExercise) await this.repository.putMistakes(this.userId, [verifiedExercise]);
-						else if (provisional) await this.repository.putMistakes(this.userId, [{ ...provisional, verificationStatus: 'discarded' }]);
+						if (verifiedExercise) {
+							const existingIndex = gameExercises.findIndex(ex => ex.id === verifiedExercise.id);
+							if (existingIndex >= 0) gameExercises[existingIndex] = verifiedExercise;
+							else gameExercises.push(verifiedExercise);
+						} else if (provisional) {
+							const existingIndex = gameExercises.findIndex(ex => ex.id === provisional.id);
+							if (existingIndex >= 0) gameExercises.splice(existingIndex, 1);
+						}
 						job.pass = 'quick';
 					}
+				}
+				const topGameMistakes = selectTopGameMistakes(gameExercises);
+				if (topGameMistakes.length > 0) {
+					found.push(...topGameMistakes);
+					await this.repository.putMistakes(this.userId, topGameMistakes);
+					this.update({ mistakesFound: existingMistakes.length + found.length });
 				}
 				job.gamesAnalyzed = gameIndex + 1; job.updatedAt = Date.now();
 				this.update({ gamesAnalyzed: job.gamesAnalyzed, mistakesFound: existingMistakes.length + found.length });

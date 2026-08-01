@@ -27,6 +27,6 @@
 </span>
 
 <style>
-  .instruction { color: var(--text-3); font: inherit; line-height: 1.4; }
+  .instruction { color: inherit; font: inherit; line-height: 1.4; white-space: pre-wrap; }
   strong { color: var(--accent); font-weight: 700; }
 </style>

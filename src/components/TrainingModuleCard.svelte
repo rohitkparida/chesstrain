@@ -86,7 +86,7 @@
   .module-copy { display: grid; gap: 0.18rem; flex: 1; min-width: 0; }
   .module-copy strong { display: flex; align-items: center; gap: 0.45rem; color: var(--text-1); font-size: 0.95rem; }
   .module-copy > span { color: var(--text-4); font-size: 0.78rem; line-height: 1.35; }
-  .module-copy small { color: var(--text-5); font-size: 0.72rem; line-height: 1.35; }
+  .module-copy small { color: var(--text-4); font-size: 0.72rem; line-height: 1.35; }
   .lock-badge { display: inline-flex; color: var(--text-5); line-height: 1; }
   .placement-link { color: var(--accent); font-size: 0.75rem; font-weight: 700; text-decoration: none; }
   .placement-link:hover { text-decoration: underline; }

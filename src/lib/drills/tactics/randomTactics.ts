@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import type { DrillDefinition } from '../types';
-import { mockPuzzles, type PuzzleData } from '$lib/chess/mockPuzzles';
+import { generateProceduralTacticsPuzzle } from '$lib/learning/proceduralTactics';
 
 export function normalizeSolutionToUcis(fen: string, solution: string[]): string[] {
   const game = new Chess(fen);
@@ -40,8 +40,7 @@ export const drill: DrillDefinition<'move'> = {
   interaction: 'move',
   version: 1,
   generate(context) {
-    const idx = Math.floor(context.random() * mockPuzzles.length);
-    const puzzle: PuzzleData = mockPuzzles[idx] ?? mockPuzzles[0];
+    const puzzle = generateProceduralTacticsPuzzle(context.random);
     const solutionUcis = normalizeSolutionToUcis(puzzle.fen, puzzle.solution);
 
     return {
@@ -68,24 +67,24 @@ export const drill: DrillDefinition<'move'> = {
     const arrows = from && to ? [{ from, to, kind: 'arrow' }] : [];
 
     if (assistance === 'solution' || !response) {
-      return {
+      return Promise.resolve({
         score: 0,
         correct: false,
         feedback: `Gave up. Winning move: ${expectedUci || 'solution unavailable'}.`,
         reveal: arrows
-      };
+      });
     }
 
     const userUci = response.uci.toLowerCase();
     const correct = expectedUci ? userUci === expectedUci.toLowerCase() : false;
 
-    return {
+    return Promise.resolve({
       score: correct ? 1 : 0,
       correct,
       feedback: correct
         ? 'Tactics solved! Excellent move.'
         : `Incorrect. The winning move was ${expectedUci}.`,
       reveal: arrows
-    };
+    });
   }
 };

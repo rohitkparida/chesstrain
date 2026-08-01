@@ -119,8 +119,8 @@
 
 <TrainingModuleShell
   title="Calculate the line"
-  task="Calculate 3 moves: your move, their reply, then your continuation."
-  taskKeywords={['3 moves', 'your move', 'their reply', 'continuation']}
+  task="Enter move sequence in notation (e.g. Rxf7, Qh5+)."
+  taskKeywords={['notation', 'Rxf7', 'Qh5+']}
   onReset={reset}
   onSkip={reset}
 >

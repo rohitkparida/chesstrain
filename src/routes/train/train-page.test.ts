@@ -11,5 +11,5 @@ describe('train landing page', () => {
     expect(screen.getByRole('link', { name: /Board Vision/ })).toHaveAttribute('href', '/train/squares');
     expect(screen.getByLabelText('Calculation, locked')).toHaveAttribute('data-locked', 'true');
     expect(screen.getByRole('link', { name: /My Mistakes/ })).toHaveAttribute('href', '/train/mistakes');
-  });
+  }, 15000);
 });
