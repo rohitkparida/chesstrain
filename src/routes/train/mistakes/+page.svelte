@@ -338,21 +338,34 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     await loadBackgroundMistakes();
   }
   function reset() {
-    pgn = '';
-    username = '';
-    candidates = [];
-    mistakes = [];
+    if (backgroundCoordinator && analyzing) {
+      backgroundCoordinator.cancel();
+      backgroundCoordinator = null;
+    }
+    engine?.terminate();
+    engine = null;
+    analyzing = false;
+
     active = 0;
     reviewFinished = false;
     activeAttempted = false;
-    showImportOptions = false;
     feedback = '';
     replay = [];
     replayStep = 0;
     replayReady = false;
     replayCache.clear();
     precalculatingIndices.clear();
-    status = 'Enter a Chess.com name or paste a PGN.';
+
+    if (mistakes.length > 0) {
+      status = `Review reset to position 1 of ${mistakes.length}.`;
+      precalculateUpcoming(0);
+    } else {
+      pgn = '';
+      showImportOptions = false;
+      const auth = get(authStore);
+      username = (!auth.authenticated || auth.guest) ? '' : get(profileStore).chessComUsername;
+      status = username ? 'Enter your Chess.com name or paste a PGN.' : 'Load your public games or paste a PGN to begin.';
+    }
   }
   function persistMistakes() {
     if (typeof localStorage === 'undefined') return;
