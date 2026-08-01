@@ -18,6 +18,11 @@
 
   let selected = $state<Set<string>>(new Set());
 
+  $effect(() => {
+    data;
+    selected = new Set();
+  });
+
   const pieces = $derived(data.fen ? piecesFromFen(data.fen) : {});
   const correctSquares = $derived(
     disabled && Array.isArray(reveal) ? (reveal as string[]) : []

@@ -141,6 +141,7 @@
 		stopTimer();
 		phase = 'memorize';
 		remainingMs = targetDurationMs;
+		selectedPiece = 'P';
 		userMap = new Map();
 		startMemorizeCountdown();
 	}

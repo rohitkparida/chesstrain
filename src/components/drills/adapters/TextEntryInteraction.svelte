@@ -15,6 +15,11 @@
 	let inputValue = $state('');
 	let inputEl: HTMLInputElement | null = $state(null);
 
+	$effect(() => {
+		data;
+		inputValue = '';
+	});
+
 	const pieces = $derived(data.fen ? piecesFromFen(data.fen) : {});
 	const correctSquares = $derived(
 		disabled && typeof reveal === 'string' && reveal !== 'none' ? [reveal] : []

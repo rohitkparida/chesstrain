@@ -42,6 +42,7 @@
 
   function syncFen(f: string) {
     try { game.load(f); } catch {}
+    clearSelection();
     rebuildSquares();
   }
 
