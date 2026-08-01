@@ -150,8 +150,8 @@
 
   <ObjectiveMetrics
     items={[
-      ...(lastSprintScore ? [{ label: 'Last Sprint', value: lastSprintScore }] : []),
-      ...(bestSprintScore ? [{ label: 'Best Sprint', value: bestSprintScore }] : []),
+      { label: 'Last Sprint', value: lastSprintScore ?? '-' },
+      { label: 'Best Sprint', value: bestSprintScore ?? '-' },
       { label: 'Attempts', value: String(attempts) },
       { label: 'Accuracy', value: `${accuracy}%` },
       { label: 'Avg Speed', value: avgSpeedSec === '-' ? '-' : `${avgSpeedSec}s` },
