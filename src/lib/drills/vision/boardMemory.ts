@@ -75,10 +75,10 @@ export function generateRandomPosition(targetCount: number, random: () => number
 }
 
 export function targetPieceCount(difficulty: number): number {
-	if (difficulty <= 300) return 4;
-	if (difficulty <= 600) return 6;
-	if (difficulty <= 900) return 9;
-	return 12;
+	if (difficulty <= 300) return 6;
+	if (difficulty <= 600) return 8;
+	if (difficulty <= 900) return 10;
+	return 13;
 }
 
 export function pieceCountForLevel(level?: BoardMemoryLevel, difficulty = 0): number {

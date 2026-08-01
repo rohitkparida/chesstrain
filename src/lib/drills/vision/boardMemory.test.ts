@@ -4,10 +4,10 @@ import { Chess } from 'chess.js';
 
 describe('boardMemory drill', () => {
 	it('scales target piece count by difficulty', () => {
-		expect(targetPieceCount(100)).toBe(4);
-		expect(targetPieceCount(450)).toBe(6);
-		expect(targetPieceCount(750)).toBe(9);
-		expect(targetPieceCount(1000)).toBe(12);
+		expect(targetPieceCount(100)).toBe(6);
+		expect(targetPieceCount(450)).toBe(8);
+		expect(targetPieceCount(750)).toBe(10);
+		expect(targetPieceCount(1000)).toBe(13);
 	});
 
 	it('generates a valid position with mandatory Kings and target piece count', () => {
