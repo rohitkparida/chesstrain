@@ -105,15 +105,24 @@
 
   let timerMode = $state<TimerMode>('session');
   let difficultyOffset = $state(0);
+  let sprintComplete = $state(false);
 
   const timerConfig = $derived(getTimerConfig(timerMode, 3, difficultyOffset));
   const durationMs = $derived(timerMode === 'session' ? 60000 : timerConfig.perAttemptSeconds * 1000);
-  const isTimerActive = $derived(runnerState.status === 'active' && timerMode !== 'none' && !isLoading);
+  const isTimerActive = $derived(runnerState.status === 'active' && timerMode !== 'none' && !isLoading && !sprintComplete);
 
   function handleTimerTimeout() {
+    if (timerMode === 'session') {
+      sprintComplete = true;
+    }
     if (runnerState.status === 'active') {
       runner.giveUp();
     }
+  }
+
+  function restartSprint() {
+    sprintComplete = false;
+    handleContinue();
   }
 </script>
 
@@ -135,12 +144,22 @@
       {#snippet children()}
         <div class="drill-body" class:is-loading={isLoading}>
           <div class="timer-bar-row">
-            <DrillTimerControls bind:mode={timerMode} {difficultyOffset} onModeChange={handleModeChange} />
+            <DrillTimerControls bind:mode={timerMode} {difficultyOffset} onModeChange={(newMode) => { sprintComplete = false; handleModeChange(newMode); }} />
           </div>
           {#if isGraceRound}
             <div class="grace-notice">Grace Round — Mode switch warm-up (Points unrated)</div>
           {/if}
           <CountdownBar {durationMs} active={isTimerActive} resetOnAttempt={timerMode === 'per-attempt'} onTimeout={handleTimerTimeout} />
+
+          {#if sprintComplete}
+            <div class="sprint-summary-card">
+              <div class="sprint-summary-header">
+                <span class="sprint-title">🏁 60-Second Sprint Complete!</span>
+              </div>
+              <p class="sprint-subtext">Review your final sprint score below.</p>
+              <ActionButton variant="primary" onclick={restartSprint}>Start New 60s Sprint &rarr;</ActionButton>
+            </div>
+          {/if}
 
           <div class="board-area">
             {#if activeAdapter}
@@ -148,7 +167,7 @@
               <AdapterComponent
                 data={mergedPublicData()}
                 reveal={runnerState.assessment?.reveal}
-                disabled={runnerState.status !== 'active' || isLoading}
+                disabled={runnerState.status !== 'active' || isLoading || sprintComplete}
                 onSubmit={handleSubmitResponse}
               />
             {:else}
@@ -157,13 +176,15 @@
           </div>
 
           <div class="action-bar">
-            {#if runnerState.status === 'active'}
+            {#if runnerState.status === 'active' && !sprintComplete}
               <button type="button" class="btn-text" onclick={() => runner.giveUp()}>Give up & show answer</button>
-            {:else if runnerState.status === 'feedback'}
+            {:else if runnerState.status === 'feedback' || sprintComplete}
               <div class="feedback-badge" class:correct={runnerState.assessment?.correct} class:incorrect={!runnerState.assessment?.correct}>
-                <span class="feedback-msg">{runnerState.assessment?.feedback ?? ''}</span>
+                <span class="feedback-msg">{sprintComplete ? 'Time up! 60s sprint completed.' : (runnerState.assessment?.feedback ?? '')}</span>
               </div>
-              <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
+              {#if !sprintComplete}
+                <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
+              {/if}
             {/if}
           </div>
 
@@ -209,6 +230,30 @@
     padding: 0.25rem 0.6rem;
     border-radius: 6px;
     text-align: center;
+  }
+  .sprint-summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface-1);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    text-align: center;
+    width: 100%;
+    max-width: var(--training-board-size, 480px);
+    box-sizing: border-box;
+  }
+  .sprint-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+  .sprint-subtext {
+    font-size: 0.82rem;
+    color: var(--text-3);
+    margin: 0;
   }
   .drill-body {
     display: flex;
