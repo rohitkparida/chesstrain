@@ -97,7 +97,7 @@
   }
 
   function reset() {
-    if (blindfoldTimer) clearTimeout(blindfoldTimer);
+    if (blindfoldTimer) clearInterval(blindfoldTimer);
     notationInput = "";
     feedback = "";
     steps = [];
@@ -114,7 +114,7 @@
     startedAt = Date.now();
   }
 
-  onDestroy(() => { if (blindfoldTimer) clearTimeout(blindfoldTimer); });
+  onDestroy(() => { if (blindfoldTimer) clearInterval(blindfoldTimer); });
 </script>
 
 <TrainingModuleShell
