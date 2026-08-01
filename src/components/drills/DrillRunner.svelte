@@ -4,6 +4,9 @@
   import { INTERACTIONS } from './adapters';
   import TrainingModuleShell from '../TrainingModuleShell.svelte';
   import ActionButton from '../ActionButton.svelte';
+  import DrillTimerControls from './DrillTimerControls.svelte';
+  import CountdownBar from './CountdownBar.svelte';
+  import { type TimerMode, getTimerConfig } from '$lib/learning/timerSystem';
 
   type K = keyof InteractionContracts;
 
@@ -83,6 +86,19 @@
     const pub = (runnerState.instance?.publicData as Record<string, unknown>) ?? {};
     return orientationOverride ? { ...pub, orientation: orientationOverride } : pub;
   });
+
+  let timerMode = $state<TimerMode>('session');
+  let difficultyOffset = $state(0);
+
+  const timerConfig = $derived(getTimerConfig(timerMode, 3, difficultyOffset));
+  const durationMs = $derived(timerMode === 'session' ? 60000 : timerConfig.perAttemptSeconds * 1000);
+  const isTimerActive = $derived(runnerState.status === 'active' && timerMode !== 'none' && !isLoading);
+
+  function handleTimerTimeout() {
+    if (runnerState.status === 'active') {
+      runner.giveUp();
+    }
+  }
 </script>
 
 <div class="drill-runner-container" class:is-loading={isLoading}>
@@ -102,6 +118,11 @@
     >
       {#snippet children()}
         <div class="drill-body" class:is-loading={isLoading}>
+          <div class="timer-bar-row">
+            <DrillTimerControls bind:mode={timerMode} {difficultyOffset} />
+          </div>
+          <CountdownBar {durationMs} active={isTimerActive} onTimeout={handleTimerTimeout} />
+
           <div class="board-area">
             {#if activeAdapter}
               {@const AdapterComponent = activeAdapter}
@@ -154,6 +175,16 @@
     justify-content: center;
     gap: 1rem;
     box-sizing: border-box;
+  }
+  .drill-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .timer-bar-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
   }
   .drill-body {
     display: flex;
