@@ -81,7 +81,7 @@ export function isPuzzleWorthy(analysis: AnalyzedMove, verificationStatus: 'prov
 	return forcedMateChange || sacrifice || lossCp >= threshold;
 }
 
-export function selectTopGameMistakes<T extends { gameId?: string; lossCp?: number }>(
+export function selectTopGameMistakes<T extends { gameId?: string; lossCp?: number; ply?: number }>(
 	items: T[],
 	maxPerGame = 2
 ): T[] {
@@ -96,7 +96,7 @@ export function selectTopGameMistakes<T extends { gameId?: string; lossCp?: numb
 	const result: T[] = [];
 	const max = Math.max(0, maxPerGame);
 	for (const group of groups.values()) {
-		group.sort((a, b) => (b.lossCp ?? 0) - (a.lossCp ?? 0));
+		group.sort((a, b) => (b.lossCp ?? 0) - (a.lossCp ?? 0) || (a.ply ?? 0) - (b.ply ?? 0));
 		result.push(...group.slice(0, max));
 	}
 	return result;
