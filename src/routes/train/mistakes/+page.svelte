@@ -277,29 +277,40 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     engine = null;
     status = 'Analysis stopped. You can change the game or start again.';
   }
+  function recordMistakeAttempt(mistake: Mistake, correctness: number, assistance?: 'solution') {
+    const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
+    const tags = assistance ? ['personal-game', 'assisted'] : ['personal-game'];
+    recordModuleAttempt({
+      exerciseId,
+      module: 'mistakes',
+      correctness,
+      ...(assistance ? { assistance } : {}),
+      tags,
+      source: 'personal-game',
+      positionFingerprint: mistake.fen
+    });
+    activeAttempted = true;
+  }
   function handleMove(from: string, to: string) {
     const mistake = mistakes[active]; if (!mistake) return false;
     const applied = applyCoordinateMove(mistake.fen, from, to);
     if (!applied) return false;
-    const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
     const correct = isCorrectMove(mistake.fen, from, to, applied, mistake.bestMove);
     if (correct) {
       feedback = `Correct. Stockfish recommends ${sanForUciMove(mistake.fen, mistake.bestMove)}. This avoids about ${(mistake.loss / 100).toFixed(1)} pawns of evaluation loss.`;
       activateReplayForActive();
-      if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 1, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; }
+      if (!activeAttempted) recordMistakeAttempt(mistake, 1);
       return true;
     }
     feedback = 'That move is legal, but it does not address the problem Stockfish found. Try again.';
-    if (!activeAttempted) { recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, tags: ['personal-game'], source: 'personal-game', positionFingerprint: mistake.fen }); activeAttempted = true; }
+    if (!activeAttempted) recordMistakeAttempt(mistake, 0);
     return false;
   }
   function giveUp() {
     const mistake = mistakes[active]; if (!mistake || activeAttempted) return;
-    const exerciseId = mistake.gameId ? `chesscom:${mistake.gameId}:${mistake.ply}` : `mistake:${mistake.fen}`;
-    activeAttempted = true;
     activateReplayForActive();
     feedback = `You gave up. The best move was ${sanForUciMove(mistake.fen, mistake.bestMove)}. Review the line, then continue.`;
-    recordModuleAttempt({ exerciseId, module: 'mistakes', correctness: 0, assistance: 'solution', tags: ['personal-game', 'assisted'], source: 'personal-game', positionFingerprint: mistake.fen });
+    recordMistakeAttempt(mistake, 0, 'solution');
   }
   function advanceReplay() { if (replayStep < replay.length) replayStep++; }
   function nextMistake() {

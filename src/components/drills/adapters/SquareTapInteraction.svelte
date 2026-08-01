@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { SquareTapData } from '$lib/drills/types';
-  import BoardGripBoard from '../../BoardGripBoard.svelte';
   import ActionButton from '../../ActionButton.svelte';
-  import { ALL_SQUARES, piecesFromFen } from '$lib/learning/nameTheSquare';
+  import SquareBoardView from './SquareBoardView.svelte';
 
   let {
     data,
@@ -16,11 +15,6 @@
     onSubmit: (response: string) => void;
   }>();
 
-  const pieces = $derived(data.fen ? piecesFromFen(data.fen) : {});
-  const correctSquares = $derived(
-    disabled && typeof reveal === 'string' && reveal !== 'none' ? [reveal] : []
-  );
-
   function handleSquareClick(square: string) {
     if (disabled) return;
     onSubmit(square);
@@ -33,14 +27,10 @@
 </script>
 
 <div class="square-tap-interaction">
-  <BoardGripBoard
-    squares={ALL_SQUARES}
-    pieces={pieces}
-    selected={new Set()}
-    markedSquare={data.markedSquare}
-    correctSquares={correctSquares}
-    orientation={data.orientation ?? 'white'}
-    rotation={data.rotation ?? 0}
+  <SquareBoardView
+    {data}
+    {reveal}
+    {disabled}
     onChoose={handleSquareClick}
   />
   {#if data.allowNone}

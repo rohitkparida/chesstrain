@@ -1,9 +1,8 @@
+import { DRILL_METADATA } from '../metadata';
 import { createSelectionVisionDrill } from './visionHelpers';
 
 export const drill = createSelectionVisionDrill({
-	id: 'vision.pinned-pieces',
-	label: 'Pinned Pieces',
-	description: 'Select all pinned pieces.',
+	metadata: DRILL_METADATA['vision.pinned-pieces'],
 	kind: 'pinned-pieces',
 	noneExpected: 'Incorrect. There were no pinned pieces.'
 });

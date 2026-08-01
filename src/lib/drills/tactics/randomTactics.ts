@@ -1,6 +1,9 @@
 import { Chess } from 'chess.js';
 import type { DrillDefinition } from '../types';
+import { DRILL_METADATA } from '../metadata';
 import { generateProceduralTacticsPuzzle } from '$lib/learning/proceduralTactics';
+
+const meta = DRILL_METADATA['tactics.random'];
 
 export function normalizeSolutionToUcis(fen: string, solution: string[]): string[] {
   const game = new Chess(fen);
@@ -33,11 +36,7 @@ export function normalizeSolutionToUcis(fen: string, solution: string[]): string
 }
 
 export const drill: DrillDefinition<'move'> = {
-  id: 'tactics.random',
-  module: 'tactics',
-  label: 'Tactics Puzzle',
-  description: 'Find the winning tactic for the position.',
-  interaction: 'move',
+  ...meta,
   version: 1,
   generate(context) {
     const puzzle = generateProceduralTacticsPuzzle(context.random);
@@ -45,7 +44,7 @@ export const drill: DrillDefinition<'move'> = {
 
     return {
       id: `tactics-${puzzle.id}-${Date.now()}`,
-      drillId: 'tactics.random',
+      drillId: meta.id,
       prompt: puzzle.description ?? 'Find the best move for the position.',
       fen: puzzle.fen,
       publicData: {

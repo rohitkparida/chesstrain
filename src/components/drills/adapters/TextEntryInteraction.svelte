@@ -1,7 +1,6 @@
 <script lang="ts">
-	import BoardGripBoard from '../../BoardGripBoard.svelte';
 	import type { SquareBoardData } from '$lib/drills/types';
-	import { ALL_SQUARES, piecesFromFen } from '$lib/learning/nameTheSquare';
+	import SquareBoardView from './SquareBoardView.svelte';
 
 	interface Props {
 		data: SquareBoardData;
@@ -19,11 +18,6 @@
 		data;
 		inputValue = '';
 	});
-
-	const pieces = $derived(data.fen ? piecesFromFen(data.fen) : {});
-	const correctSquares = $derived(
-		disabled && typeof reveal === 'string' && reveal !== 'none' ? [reveal] : []
-	);
 
 	function handleSubmit(e?: Event) {
 		if (e) e.preventDefault();
@@ -64,15 +58,10 @@
 
 <div class="text-entry-interaction">
 	<div class="board-container">
-		<BoardGripBoard
-			squares={ALL_SQUARES}
-			pieces={pieces}
-			selected={new Set()}
-			markedSquare={data.markedSquare}
-			correctSquares={correctSquares}
-			orientation={data.orientation ?? 'white'}
-			rotation={data.rotation ?? 0}
-			onChoose={() => {}}
+		<SquareBoardView
+			{data}
+			{reveal}
+			{disabled}
 		/>
 	</div>
 

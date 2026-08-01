@@ -195,11 +195,6 @@
     gap: 1rem;
     box-sizing: border-box;
   }
-  .drill-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
   .timer-bar-row {
     display: flex;
     justify-content: flex-end;

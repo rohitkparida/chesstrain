@@ -1,25 +1,13 @@
 import type { DrillDefinition } from '../types';
+import { DRILL_METADATA } from '../metadata';
 import { makeBoardGripRound, randomBoardGripView } from '$lib/learning/boardGrip';
 import { randomRealisticFen } from '$lib/learning/nameTheSquare';
+import { extractTargetSquare, assessSingleSquare } from './visionHelpers';
 
-function extractTargetSquare(previousFingerprint?: string): string | undefined {
-  if (!previousFingerprint) return undefined;
-  if (/^[a-h][1-8]$/i.test(previousFingerprint)) {
-    return previousFingerprint.toLowerCase();
-  }
-  const parts = previousFingerprint.split(':');
-  if (parts.length > 1 && /^[a-h][1-8]$/i.test(parts[1])) {
-    return parts[1].toLowerCase();
-  }
-  return undefined;
-}
+const meta = DRILL_METADATA['vision.find-square'];
 
 export const drill: DrillDefinition<'square-tap'> = {
-  id: 'vision.find-square',
-  module: 'board-grip',
-  label: 'Find the Square',
-  description: 'Tap the requested coordinate on the board.',
-  interaction: 'square-tap',
+  ...meta,
   version: 1,
   generate(context) {
     const previousTargetSquare = extractTargetSquare(context.previousFingerprint) ?? context.previousFingerprint;
@@ -30,7 +18,7 @@ export const drill: DrillDefinition<'square-tap'> = {
 
     return {
       id: `find-square-${Date.now()}-${context.random()}`,
-      drillId: 'vision.find-square',
+      drillId: meta.id,
       prompt: round.prompt,
       fen,
       publicData: {
@@ -46,23 +34,6 @@ export const drill: DrillDefinition<'square-tap'> = {
     };
   },
   evaluate(privateData, response, assistance) {
-    if (assistance === 'solution' || !response) {
-      return {
-        score: 0,
-        correct: false,
-        feedback: `Gave up. Correct square: ${privateData.targetSquare}.`,
-        reveal: privateData.targetSquare
-      };
-    }
-
-    const correct = response === privateData.targetSquare;
-    return {
-      score: correct ? 1 : 0,
-      correct,
-      feedback: correct
-        ? 'Correct!'
-        : `Incorrect. Expected ${privateData.targetSquare}, but got ${response}.`,
-      reveal: privateData.targetSquare
-    };
+    return assessSingleSquare(privateData.targetSquare, response, assistance);
   }
 };

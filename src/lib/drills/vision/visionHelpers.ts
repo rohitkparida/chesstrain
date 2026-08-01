@@ -1,6 +1,47 @@
 import type { AssistanceLevel, DrillAssessment, DrillContext, DrillDefinition } from '../types';
 import { NONE_ANSWER_RATE, makeBoardGripRound, randomBoardGripView, type BoardGripKind } from '$lib/learning/boardGrip';
 import { randomRealisticFen } from '$lib/learning/nameTheSquare';
+import type { DrillMeta } from '../metadata';
+
+export function extractTargetSquare(previousFingerprint?: string): string | undefined {
+	if (!previousFingerprint) return undefined;
+	if (/^[a-h][1-8]$/i.test(previousFingerprint)) {
+		return previousFingerprint.toLowerCase();
+	}
+	const parts = previousFingerprint.split(':');
+	if (parts.length > 1 && /^[a-h][1-8]$/i.test(parts[1])) {
+		return parts[1].toLowerCase();
+	}
+	return undefined;
+}
+
+export function assessSingleSquare(
+	targetSquare: string,
+	response: string | null,
+	assistance?: AssistanceLevel
+): DrillAssessment {
+	if (assistance === 'solution' || !response) {
+		return {
+			score: 0,
+			correct: false,
+			feedback: `Gave up. Correct square: ${targetSquare}.`,
+			reveal: targetSquare
+		};
+	}
+
+	const normalizedResponse = response.trim().toLowerCase();
+	const normalizedTarget = targetSquare.trim().toLowerCase();
+	const correct = normalizedResponse === normalizedTarget;
+
+	return {
+		score: correct ? 1 : 0,
+		correct,
+		feedback: correct
+			? 'Correct!'
+			: `Incorrect. Expected ${targetSquare}, but got ${normalizedResponse}.`,
+		reveal: targetSquare
+	};
+}
 
 export function sampleSquareSelectionRound<T extends { answers: string[]; fen: string }>(
 	context: DrillContext,
@@ -67,17 +108,23 @@ export function assessSquareSelection(
 }
 
 export function createSelectionVisionDrill(config: {
-	id: string;
-	label: string;
-	description: string;
+	metadata?: DrillMeta<'square-select'>;
+	id?: string;
+	label?: string;
+	description?: string;
 	kind: 'loose-pieces' | 'pinned-pieces' | 'square-control';
 	noneExpected: string;
 }): DrillDefinition<'square-select'> {
+	const id = config.metadata?.id ?? config.id!;
+	const module = config.metadata?.module ?? 'board-grip';
+	const label = config.metadata?.label ?? config.label!;
+	const description = config.metadata?.description ?? config.description!;
+
 	return {
-		id: config.id,
-		module: 'board-grip',
-		label: config.label,
-		description: config.description,
+		id,
+		module,
+		label,
+		description,
 		interaction: 'square-select',
 		version: 1,
 		generate(context) {
@@ -88,7 +135,7 @@ export function createSelectionVisionDrill(config: {
 			const view = randomBoardGripView(gripKind, context.random);
 			return {
 				id: `${config.kind}-${Date.now()}-${context.random()}`,
-				drillId: config.id,
+				drillId: id,
 				prompt: round.prompt,
 				fen: round.fen,
 				publicData: {
@@ -116,4 +163,3 @@ export function createSelectionVisionDrill(config: {
 		}
 	};
 }
-

@@ -1,25 +1,13 @@
 import type { DrillDefinition } from '../types';
+import { DRILL_METADATA } from '../metadata';
 import { makeBoardGripRound, randomBoardGripView } from '$lib/learning/boardGrip';
 import { randomRealisticFen } from '$lib/learning/nameTheSquare';
+import { extractTargetSquare, assessSingleSquare } from './visionHelpers';
 
-function extractTargetSquare(previousFingerprint?: string): string | undefined {
-  if (!previousFingerprint) return undefined;
-  if (/^[a-h][1-8]$/i.test(previousFingerprint)) {
-    return previousFingerprint.toLowerCase();
-  }
-  const parts = previousFingerprint.split(':');
-  if (parts.length > 1 && /^[a-h][1-8]$/i.test(parts[1])) {
-    return parts[1].toLowerCase();
-  }
-  return undefined;
-}
+const meta = DRILL_METADATA['vision.name-square'];
 
 export const drill: DrillDefinition<'text-entry'> = {
-  id: 'vision.name-square',
-  module: 'board-grip',
-  label: 'Name the Square',
-  description: 'Type the coordinate of the highlighted square.',
-  interaction: 'text-entry',
+  ...meta,
   version: 1,
   generate(context) {
     const previousTargetSquare = extractTargetSquare(context.previousFingerprint) ?? context.previousFingerprint;
@@ -30,7 +18,7 @@ export const drill: DrillDefinition<'text-entry'> = {
 
     return {
       id: `name-square-${Date.now()}-${context.random()}`,
-      drillId: 'vision.name-square',
+      drillId: meta.id,
       prompt: 'Name the highlighted square.',
       fen,
       publicData: {
@@ -47,24 +35,6 @@ export const drill: DrillDefinition<'text-entry'> = {
     };
   },
   evaluate(privateData, response, assistance) {
-    if (assistance === 'solution' || !response) {
-      return {
-        score: 0,
-        correct: false,
-        feedback: `Gave up. Correct square: ${privateData.targetSquare}.`,
-        reveal: privateData.targetSquare
-      };
-    }
-
-    const normalizedResponse = response.trim().toLowerCase();
-    const correct = normalizedResponse === privateData.targetSquare.toLowerCase();
-    return {
-      score: correct ? 1 : 0,
-      correct,
-      feedback: correct
-        ? 'Correct!'
-        : `Incorrect. Expected ${privateData.targetSquare}, but got ${normalizedResponse}.`,
-      reveal: privateData.targetSquare
-    };
+    return assessSingleSquare(privateData.targetSquare, response, assistance);
   }
 };

@@ -1,9 +1,8 @@
+import { DRILL_METADATA } from '../metadata';
 import { createSelectionVisionDrill } from './visionHelpers';
 
 export const drill = createSelectionVisionDrill({
-	id: 'vision.loose-pieces',
-	label: 'Undefended Pieces',
-	description: 'Select all undefended pieces and pawns.',
+	metadata: DRILL_METADATA['vision.loose-pieces'],
 	kind: 'loose-pieces',
 	noneExpected: 'Incorrect. There were no undefended pieces.'
 });

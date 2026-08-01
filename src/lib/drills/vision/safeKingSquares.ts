@@ -1,15 +1,14 @@
 import type { DrillDefinition } from '../types';
+import { DRILL_METADATA } from '../metadata';
 import { safeKingSquaresInfoFromFen, randomBoardGripView } from '$lib/learning/boardGrip';
 import { randomRealisticFen } from '$lib/learning/nameTheSquare';
 import { assessSquareSelection } from './visionHelpers';
 import type { Color } from 'chess.js';
 
+const meta = DRILL_METADATA['vision.safe-king-squares'];
+
 export const drill: DrillDefinition<'square-select'> = {
-  id: 'vision.safe-king-squares',
-  module: 'board-grip',
-  label: 'Safe King Squares',
-  description: 'Select every safe square adjacent to the king.',
-  interaction: 'square-select',
+  ...meta,
   version: 1,
   generate(context) {
     const wantUnsafe = context.random() >= 0.10; // 90% unsafe, 10% safe
@@ -55,7 +54,7 @@ export const drill: DrillDefinition<'square-select'> = {
 
     return {
       id: `safe-king-squares-${Date.now()}-${context.random()}`,
-      drillId: 'vision.safe-king-squares',
+      drillId: meta.id,
       prompt: `Select all safe squares adjacent to the ${colorName} king.`,
       fen: selected.fen,
       publicData: {

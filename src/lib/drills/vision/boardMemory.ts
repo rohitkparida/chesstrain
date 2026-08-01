@@ -1,8 +1,9 @@
 import { Chess, type PieceSymbol, type Color } from 'chess.js';
 import type { DrillDefinition, DrillContext, GeneratedDrill, DrillAssessment, AssistanceLevel, BoardReconstructData, BoardReconstructResponse, BoardMemoryLevel } from '../types';
+import { DRILL_METADATA } from '../metadata';
 import { FILES } from '$lib/chess/board';
 
-const DRILL_ID = 'vision.board-memory';
+const meta = DRILL_METADATA['vision.board-memory'];
 const VERSION = 1;
 
 function randomElement<T>(arr: T[], random: () => number): T {
@@ -118,11 +119,7 @@ export function parseBoardPieces(fen: string): Map<string, { type: PieceSymbol; 
 }
 
 export const drill: DrillDefinition<'board-reconstruct'> = {
-	id: DRILL_ID,
-	module: 'board-grip',
-	label: 'Board Memory',
-	description: 'Memorize the position and reconstruct the board.',
-	interaction: 'board-reconstruct',
+	...meta,
 	version: VERSION,
 
 	generate(context: DrillContext): GeneratedDrill<'board-reconstruct'> {
@@ -143,8 +140,8 @@ export const drill: DrillDefinition<'board-reconstruct'> = {
 		};
 
 		return {
-			id: `${DRILL_ID}:${Date.now()}:${Math.floor(context.random() * 1000)}`,
-			drillId: DRILL_ID,
+			id: `${meta.id}:${Date.now()}:${Math.floor(context.random() * 1000)}`,
+			drillId: meta.id,
 			prompt: `Memorize the position (${pieceCount} pieces)`,
 			fen,
 			publicData,

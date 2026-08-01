@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { SquareSelectData } from '$lib/drills/types';
-  import BoardGripBoard from '../../BoardGripBoard.svelte';
   import ActionButton from '../../ActionButton.svelte';
-  import { ALL_SQUARES, piecesFromFen } from '$lib/learning/nameTheSquare';
+  import SquareBoardView from './SquareBoardView.svelte';
 
   let {
     data,
@@ -22,11 +21,6 @@
     data;
     selected = new Set();
   });
-
-  const pieces = $derived(data.fen ? piecesFromFen(data.fen) : {});
-  const correctSquares = $derived(
-    disabled && Array.isArray(reveal) ? (reveal as string[]) : []
-  );
 
   function toggleSquare(square: string) {
     if (disabled) return;
@@ -51,14 +45,11 @@
 </script>
 
 <div class="square-select-interaction">
-  <BoardGripBoard
-    squares={ALL_SQUARES}
-    pieces={pieces}
-    selected={selected}
-    markedSquare={data.markedSquare}
-    correctSquares={correctSquares}
-    orientation={data.orientation ?? 'white'}
-    rotation={data.rotation ?? 0}
+  <SquareBoardView
+    {data}
+    {reveal}
+    {disabled}
+    {selected}
     onChoose={toggleSquare}
   />
 
