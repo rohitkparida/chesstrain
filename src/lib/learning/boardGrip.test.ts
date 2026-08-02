@@ -4,7 +4,6 @@ import {
 	attackerSquaresFromFen,
 	loosePieceSquaresFromFen,
 	makeBoardGripRound,
-	nextBoardGripRound,
 	NONE_ANSWER_RATE,
 	pinnedPieceSquaresFromFen,
 	randomBoardGripView
@@ -76,11 +75,18 @@ describe('board grip helpers', () => {
 		expect(pinnedPieceSquaresFromFen(fen)).toContain('f6');
 	});
 
-	it('rotates drill types instead of immediately repeating them', () => {
-		const first = nextBoardGripRound(null, () => 0);
-		const second = nextBoardGripRound(first, () => 0);
+	it('generates rounds for each board grip drill kind', () => {
+		const fen = new Chess().fen();
+		const nameRound = makeBoardGripRound('name-square', fen);
+		const findRound = makeBoardGripRound('find-square', fen);
+		const attackersRound = makeBoardGripRound('attackers', fen);
+		const looseRound = makeBoardGripRound('loose-pieces', fen);
+		const pinnedRound = makeBoardGripRound('pinned-pieces', fen);
 
-		expect(first.kind).toBe('name-square');
-		expect(second.kind).toBe('find-square');
+		expect(nameRound.kind).toBe('name-square');
+		expect(findRound.kind).toBe('find-square');
+		expect(attackersRound.kind).toBe('attackers');
+		expect(looseRound.kind).toBe('loose-pieces');
+		expect(pinnedRound.kind).toBe('pinned-pieces');
 	});
 });

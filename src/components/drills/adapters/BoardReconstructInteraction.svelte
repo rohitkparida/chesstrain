@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { Chess, type PieceSymbol, type Color } from 'chess.js';
+	import type { PieceSymbol, Color } from 'chess.js';
 	import ChessBoard from '../../ChessBoard.svelte';
 	import ActionButton from '../../ActionButton.svelte';
-	import { buildBoardSquares, pieceGlyph, type BoardSquare } from '$lib/chess/board';
-	import { buildFenFromMap, parseBoardPieces, generateRandomPosition } from '$lib/drills/vision/boardMemoryUtils';
-	import type { BoardMemoryLevel } from '$lib/drills/types';
+	import SquareBoardView from './SquareBoardView.svelte';
+	import { pieceGlyph } from '$lib/chess/board';
+	import { buildFenFromMap, generateRandomPosition } from '$lib/drills/vision/boardMemoryUtils';
+	import type { BoardMemoryLevel, SquareBoardData } from '$lib/drills/types';
 
 	let {
 		data,
@@ -43,68 +44,36 @@
 		{ id: 'advanced', label: 'Advanced', count: 10 }
 	];
 
+	const PIECE_TYPES: { type: PieceSymbol; name: string }[] = [
+		{ type: 'p', name: 'Pawn' },
+		{ type: 'n', name: 'Knight' },
+		{ type: 'b', name: 'Bishop' },
+		{ type: 'r', name: 'Rook' },
+		{ type: 'q', name: 'Queen' },
+		{ type: 'k', name: 'King' }
+	];
+
+	const PALETTE_COLORS: { color: Color; label: string }[] = [
+		{ color: 'w', label: 'White' },
+		{ color: 'b', label: 'Black' }
+	];
+
 	const memorizeSeconds = $derived(data.memorizeSeconds ?? 3);
 	const targetDurationMs = $derived(memorizeSeconds * 1000);
 	const percent = $derived(Math.max(0, Math.min(100, (remainingMs / targetDurationMs) * 100)));
 	const boardOrientation = $derived(data.orientation === 'black' ? 'black' : 'white');
 	const userFen = $derived(buildFenFromMap(userMap));
 	const displayFen = $derived(reveal ? activeFen : userFen);
-	const isFlipped = $derived(boardOrientation === 'black');
-	const boardSquares = $derived(buildBoardSquaresFromMap(userMap, activeFen, Boolean(reveal), isFlipped));
-
-	const WHITE_PALETTE = [
-		{ type: 'P', icon: '♙', label: 'White Pawn' },
-		{ type: 'N', icon: '♘', label: 'White Knight' },
-		{ type: 'B', icon: '♗', label: 'White Bishop' },
-		{ type: 'R', icon: '♖', label: 'White Rook' },
-		{ type: 'Q', icon: '♕', label: 'White Queen' },
-		{ type: 'K', icon: '♔', label: 'White King' }
-	];
-
-	const BLACK_PALETTE = [
-		{ type: 'p', icon: '♟', label: 'Black Pawn' },
-		{ type: 'n', icon: '♞', label: 'Black Knight' },
-		{ type: 'b', icon: '♝', label: 'Black Bishop' },
-		{ type: 'r', icon: '♜', label: 'Black Rook' },
-		{ type: 'q', icon: '♛', label: 'Black Queen' },
-		{ type: 'k', icon: '♚', label: 'Black King' }
-	];
-
-	function buildBoardSquaresFromMap(
-		placed: Map<string, { type: PieceSymbol; color: Color }>,
-		targetFen: string,
-		isReveal: boolean,
-		flipped: boolean
-	): BoardSquare[] {
-		const targetMap = isReveal ? parseBoardPieces(targetFen) : placed;
-		const next: BoardSquare[] = [];
-		const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-
-		for (let row = 0; row < 8; row += 1) {
-			for (let column = 0; column < 8; column += 1) {
-				const boardRow = flipped ? 7 - row : row;
-				const boardColumn = flipped ? 7 - column : column;
-				const rank = 8 - boardRow;
-				const file = FILES[boardColumn];
-				const name = `${file}${rank}`;
-				const cell = targetMap.get(name);
-				const dark = (boardColumn + rank) % 2 === 1;
-
-				next.push({
-					name,
-					dark,
-					pieceKey: cell ? `${cell.color}${cell.type.toUpperCase()}` : null,
-					pieceColor: cell ? cell.color : null,
-					fileLabel: row === 7 ? file : null,
-					rankLabel: column === 0 ? String(rank) : null
-				});
-			}
-		}
-		return next;
-	}
+	const reconstructBoardData = $derived<SquareBoardData>({
+		fen: displayFen,
+		orientation: boardOrientation
+	});
 
 	$effect(() => {
-		data.fen;
+		if (activeLevel === 'adaptive') {
+			activeFen = data.fen;
+			activePieceCount = data.pieceCount ?? 4;
+		}
 		resetDrillState();
 	});
 
@@ -247,62 +216,36 @@
 			<span class="reconstruct-sub">{reveal ? 'Green indicates your reconstructed accuracy.' : 'Tap a piece in the palette, then tap a square.'}</span>
 		</div>
 
-		<div class="board-wrapper">
-			<div class="reconstruct-grid" class:flipped={boardOrientation === 'black'}>
-				{#each boardSquares as sq (sq.name)}
-					<button
-						type="button"
-						class="board-square"
-						class:dark={sq.dark}
-						class:light={!sq.dark}
-						onclick={() => handleSquareClick(sq.name)}
-						disabled={disabled || Boolean(reveal)}
-						aria-label="{sq.name}{sq.pieceKey ? ` contains piece` : ''}"
-					>
-						{#if sq.pieceKey}
-							<span class="square-piece" class:white={sq.pieceColor === 'w'} class:black={sq.pieceColor === 'b'}>
-								{pieceGlyph(sq.pieceKey)}
-							</span>
-						{/if}
-						<span class="square-coord">{sq.name}</span>
-					</button>
-				{/each}
-			</div>
-		</div>
+		<SquareBoardView
+			data={reconstructBoardData}
+			{reveal}
+			disabled={disabled || Boolean(reveal)}
+			onChoose={handleSquareClick}
+		/>
 
 		{#if !reveal}
 			<div class="palette-container" role="group" aria-label="Piece selection palette">
-				<div class="palette-row">
-					<span class="palette-label">White:</span>
-					{#each WHITE_PALETTE as p (p.type)}
-						<button
-							type="button"
-							class="piece-btn"
-							class:selected={selectedPiece === p.type}
-							onclick={() => (selectedPiece = p.type)}
-							title={p.label}
-							aria-label={p.label}
-						>
-							<span class="piece-icon">{p.icon}</span>
-						</button>
-					{/each}
-				</div>
-
-				<div class="palette-row">
-					<span class="palette-label">Black:</span>
-					{#each BLACK_PALETTE as p (p.type)}
-						<button
-							type="button"
-							class="piece-btn"
-							class:selected={selectedPiece === p.type}
-							onclick={() => (selectedPiece = p.type)}
-							title={p.label}
-							aria-label={p.label}
-						>
-							<span class="piece-icon">{p.icon}</span>
-						</button>
-					{/each}
-				</div>
+				{#each PALETTE_COLORS as { color, label: colorLabel } (color)}
+					<div class="palette-row">
+						<span class="palette-label">{colorLabel}:</span>
+						{#each PIECE_TYPES as { type, name: pieceName } (type)}
+							{@const code = color === 'w' ? type.toUpperCase() : type}
+							{@const key = `${color}${type.toUpperCase()}`}
+							{@const icon = pieceGlyph(key)}
+							{@const label = `${colorLabel} ${pieceName}`}
+							<button
+								type="button"
+								class="piece-btn"
+								class:selected={selectedPiece === code}
+								onclick={() => (selectedPiece = code)}
+								title={label}
+								aria-label={label}
+							>
+								<span class="piece-icon">{icon}</span>
+							</button>
+						{/each}
+					</div>
+				{/each}
 			</div>
 
 			<div class="submit-row">
@@ -391,63 +334,6 @@
 		height: 100%;
 		background: var(--accent);
 		transition: width 50ms linear;
-	}
-	.board-wrapper {
-		width: 100%;
-		aspect-ratio: 1;
-		border-radius: 8px;
-		overflow: hidden;
-		border: 1px solid var(--border);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-	}
-	.reconstruct-grid {
-		display: grid;
-		grid-template-columns: repeat(8, 1fr);
-		grid-template-rows: repeat(8, 1fr);
-		width: 100%;
-		height: 100%;
-	}
-	.board-square {
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		user-select: none;
-	}
-	.board-square.light {
-		background-color: #f0d9b5;
-	}
-	.board-square.dark {
-		background-color: #b58863;
-	}
-	.board-square:hover:not(:disabled) {
-		filter: brightness(1.1);
-	}
-	.square-piece {
-		font-size: clamp(1.8rem, 4vw, 2.5rem);
-		line-height: 1;
-		pointer-events: none;
-	}
-	.square-piece.white {
-		color: #ffffff;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 1px rgba(0, 0, 0, 0.9);
-	}
-	.square-piece.black {
-		color: #111111;
-		text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
-	}
-	.square-coord {
-		position: absolute;
-		bottom: 2px;
-		right: 2px;
-		font-size: 0.62rem;
-		font-weight: 700;
-		opacity: 0.5;
-		color: var(--text-2);
-		pointer-events: none;
 	}
 	.palette-container {
 		display: flex;

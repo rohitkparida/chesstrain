@@ -1,21 +1,6 @@
-import type { PieceSymbol, Color } from 'chess.js';
+import { Chess, type PieceSymbol, type Color } from 'chess.js';
 import { FILES } from '$lib/chess/board';
-import type { BoardMemoryLevel } from '../types';
-
-function randomElement<T>(arr: T[], random: () => number): T {
-	return arr[Math.floor(random() * arr.length)] ?? arr[0];
-}
-
-const ALL_SQUARES = [
-	'a1','b1','c1','d1','e1','f1','g1','h1',
-	'a2','b2','c2','d2','e2','f2','g2','h2',
-	'a3','b3','c3','d3','e3','f3','g3','h3',
-	'a4','b4','c4','d4','e4','f4','g4','h4',
-	'a5','b5','c5','d5','e5','f5','g5','h5',
-	'a6','b6','c6','d6','e6','f6','g6','h6',
-	'a7','b7','c7','d7','e7','f7','g7','h7',
-	'a8','b8','c8','d8','e8','f8','g8','h8'
-];
+import { ALL_SQUARES } from '$lib/learning/nameTheSquare';
 
 export function buildFenFromMap(boardMap: Map<string, { type: PieceSymbol; color: Color }>): string {
 	const ranks: string[] = [];
@@ -57,7 +42,7 @@ export function generateRandomPosition(targetCount: number, random: () => number
 	while (placed < targetCount && shuffledSquares.length > 0) {
 		const sq = shuffledSquares.pop()!;
 		const color: Color = random() > 0.5 ? 'w' : 'b';
-		let type = randomElement(pieceTypes, random);
+		let type = pieceTypes[Math.floor(random() * pieceTypes.length)] ?? 'p';
 
 		if (type === 'p' && (sq.endsWith('1') || sq.endsWith('8'))) {
 			type = 'n';
@@ -78,38 +63,19 @@ export function targetPieceCount(difficulty: number): number {
 	return 13;
 }
 
-export function pieceCountForLevel(level?: BoardMemoryLevel, difficulty = 0): number {
-	if (level === 'beginner') return 4;
-	if (level === 'intermediate') return 6;
-	if (level === 'advanced') return 10;
-	return targetPieceCount(difficulty);
-}
-
 export function parseBoardPieces(fen: string): Map<string, { type: PieceSymbol; color: Color }> {
 	const result = new Map<string, { type: PieceSymbol; color: Color }>();
-	const fenParts = fen.split(' ');
-	const position = fenParts[0] ?? '';
-	const ranks = position.split('/');
-	if (ranks.length !== 8) return result;
-
-	for (let r = 0; r < 8; r++) {
-		const rankNum = 8 - r;
-		let fileIdx = 0;
-		const rankStr = ranks[r];
-		for (let i = 0; i < rankStr.length; i++) {
-			const char = rankStr[i];
-			if (char >= '1' && char <= '8') {
-				fileIdx += Number(char);
-			} else {
-				const fileChar = FILES[fileIdx];
-				if (fileChar) {
-					const color: Color = char === char.toUpperCase() ? 'w' : 'b';
-					const type: PieceSymbol = char.toLowerCase() as PieceSymbol;
-					result.set(`${fileChar}${rankNum}`, { type, color });
+	try {
+		const game = new Chess(fen);
+		for (const row of game.board()) {
+			for (const piece of row) {
+				if (piece) {
+					result.set(piece.square, { type: piece.type, color: piece.color });
 				}
-				fileIdx++;
 			}
 		}
+	} catch {
+		// return empty map if FEN is invalid
 	}
 	return result;
 }

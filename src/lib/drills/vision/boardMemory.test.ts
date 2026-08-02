@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { drill } from './boardMemory';
-import { generateRandomPosition, targetPieceCount } from './boardMemoryUtils';
+import { generateRandomPosition, parseBoardPieces, targetPieceCount } from './boardMemoryUtils';
 import { Chess } from 'chess.js';
 
 describe('boardMemory drill', () => {
@@ -59,5 +59,13 @@ describe('boardMemory drill', () => {
 
 		expect(assessment.score).toBe(0.0);
 		expect(assessment.feedback).toContain('2/3');
+	});
+
+	it('parses board pieces accurately using parseBoardPieces', () => {
+		const map = parseBoardPieces('8/8/8/8/8/8/4P3/K3k3 w - - 0 1');
+		expect(map.size).toBe(3);
+		expect(map.get('a1')).toEqual({ type: 'k', color: 'w' });
+		expect(map.get('e1')).toEqual({ type: 'k', color: 'b' });
+		expect(map.get('e2')).toEqual({ type: 'p', color: 'w' });
 	});
 });

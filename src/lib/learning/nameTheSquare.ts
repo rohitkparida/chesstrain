@@ -60,9 +60,35 @@ export function randomRealisticFen(current = '', random = Math.random): string {
 
 export function piecesFromFen(fen: string): Record<string, PositionPiece> {
 	const pieces: Record<string, PositionPiece> = {};
-	for (const row of new Chess(fen).board()) {
-		for (const piece of row) {
-			if (piece) pieces[piece.square] = { color: piece.color, type: piece.type };
+	try {
+		for (const row of new Chess(fen).board()) {
+			for (const piece of row) {
+				if (piece) pieces[piece.square] = { color: piece.color, type: piece.type };
+			}
+		}
+	} catch {
+		const position = fen.split(' ')[0] ?? '';
+		const ranks = position.split('/');
+		if (ranks.length === 8) {
+			for (let r = 0; r < 8; r++) {
+				const rankNum = 8 - r;
+				let fileIdx = 0;
+				const rankStr = ranks[r];
+				for (let i = 0; i < rankStr.length; i++) {
+					const char = rankStr[i];
+					if (char >= '1' && char <= '8') {
+						fileIdx += Number(char);
+					} else {
+						const fileChar = FILES[fileIdx];
+						if (fileChar) {
+							const color: Color = char === char.toUpperCase() ? 'w' : 'b';
+							const type = char.toLowerCase() as PieceSymbol;
+							pieces[`${fileChar}${rankNum}`] = { color, type };
+						}
+						fileIdx++;
+					}
+				}
+			}
 		}
 	}
 	return pieces;
