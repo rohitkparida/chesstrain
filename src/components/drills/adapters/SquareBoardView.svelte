@@ -42,5 +42,6 @@
   correctSquares={correctSquares}
   orientation={orientation}
   rotation={rotation}
+  disabled={disabled}
   onChoose={onChoose}
 />

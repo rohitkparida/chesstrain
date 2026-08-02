@@ -39,8 +39,7 @@ export const drill: DrillDefinition<'move'> = {
   ...meta,
   version: 1,
   generate(context) {
-    const customPuzzle = (context as unknown as { getPuzzle?: () => ProceduralPuzzle }).getPuzzle?.();
-    const puzzle = customPuzzle ?? generateProceduralTacticsPuzzle(context.random);
+    const puzzle = generateProceduralTacticsPuzzle(context.random);
     const solutionUcis = normalizeSolutionToUcis(puzzle.fen, puzzle.solution);
 
     const isBlack = puzzle.fen.includes(' b ');

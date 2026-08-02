@@ -14,15 +14,15 @@ test('login, Today, Train catalog, and module metadata flow', async ({ page }) =
 
   await page.getByRole('link', { name: 'Train', exact: true }).click();
   await expect(page).toHaveURL(/\/train$/);
-  await expect(page.getByRole('heading', { name: 'Choose a focus' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Train a skill' })).toBeVisible();
   await expect(page.getByLabel('Calculation, locked')).toBeVisible();
 
   await page.getByRole('link', { name: /Board Vision/ }).click();
   await expect(page).toHaveURL(/\/train\/squares$/);
-  await expect(page.locator('.instruction-banner')).toBeVisible();
+  await expect(page.locator('.task-line')).toBeVisible();
 
   await page.reload();
-  await expect(page.locator('.instruction-banner')).toBeVisible();
+  await expect(page.locator('.task-line')).toBeVisible();
 
   await page.goto('/dictionary#loose-piece');
   await expect(page).toHaveURL(/\/dictionary#loose-piece$/);

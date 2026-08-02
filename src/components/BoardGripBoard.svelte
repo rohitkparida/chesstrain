@@ -11,7 +11,8 @@
     onChoose,
     orientation = 'white',
     rotation = 0,
-    turn = 'w'
+    turn = 'w',
+    disabled = false
   } = $props<{
     squares: string[];
     pieces: Record<string, PositionPiece>;
@@ -22,6 +23,7 @@
     orientation?: 'white' | 'black' | 'side-to-move';
     rotation?: BoardRotation;
     turn?: 'w' | 'b';
+    disabled?: boolean;
   }>();
 
   const viewFlipped = $derived(orientation === 'black' || (orientation === 'side-to-move' && turn === 'b'));
@@ -41,6 +43,7 @@
   {#each displaySquares as square}
     {@const piece = pieces[square]}
     <button
+      disabled={disabled}
       class:dark={isDarkSquare(square)}
       class:light={!isDarkSquare(square)}
       class:selected={selected.has(square)}

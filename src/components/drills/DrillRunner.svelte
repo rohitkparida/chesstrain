@@ -91,6 +91,7 @@
 
   $effect(() => {
     entry;
+    context;
     reloadNonce;
     loadAndGenerate();
   });
