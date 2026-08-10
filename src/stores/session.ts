@@ -85,11 +85,15 @@ export type PersistenceSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
 /** Observable status for optional UI/diagnostics; local progress is always authoritative. */
 export const persistenceSyncStatus = writable<PersistenceSyncStatus>('local');
 let pendingCloudWrites = 0;
+let cloudWriteFailed = false;
 function beginCloudWrite() { pendingCloudWrites++; persistenceSyncStatus.set('syncing'); }
 function finishCloudWrite(ok: boolean) {
 	pendingCloudWrites = Math.max(0, pendingCloudWrites - 1);
-	if (!ok) persistenceSyncStatus.set('error');
-	else if (pendingCloudWrites === 0) persistenceSyncStatus.set('synced');
+	if (!ok) cloudWriteFailed = true;
+	if (pendingCloudWrites === 0) {
+		persistenceSyncStatus.set(cloudWriteFailed ? 'error' : 'synced');
+		cloudWriteFailed = false;
+	}
 }
 
 const CLOUD_MODULES = new Set<TrainingModuleId>(['board-grip', 'tactics', 'openings', 'calculation', 'positional', 'decision', 'endgame', 'mistakes']);
@@ -112,12 +116,15 @@ export async function hydrateCloudSession(userId: string, username: string): Pro
 		persistenceSyncStatus.set('error');
 		return;
 	}
-	const ratingMap: Record<string, number> = { ...defaultSession.ratings };
+	const local = get(sessionStore);
+	const ratingMap: Record<string, number> = { ...defaultSession.ratings, ...local.ratings };
 	for (const rating of ratings) ratingMap[`${rating.skill}:${rating.subtype}`] = rating.elo;
-	const srsMap: Record<string, SRSEntry> = {};
+	const srsMap: Record<string, SRSEntry> = { ...local.srs };
 	for (const card of cards) srsMap[card.exerciseId] = { puzzleId: card.exerciseId, repetition: card.repetition, interval: card.intervalDays, easeFactor: card.easeFactor, nextScheduledDate: card.nextReviewAt.getTime() };
-	const trainingAttempts = attempts.filter((a) => CLOUD_MODULES.has(a.module as TrainingModuleId)).map(cloudAttemptToTrainingAttempt).reverse();
-	sessionStore.set({ ...defaultSession, userId: username, ratings: ratingMap, srs: srsMap, trainingAttempts, totalSolved: trainingAttempts.filter((a) => a.correct).length, streak: calculateStreak(trainingAttempts), moduleProgress: createProgressMap(trainingAttempts, false), loadedPuzzles: [] });
+	const cloudAttempts = attempts.filter((a) => CLOUD_MODULES.has(a.module as TrainingModuleId)).map(cloudAttemptToTrainingAttempt);
+	const attemptsById = new Map([...local.trainingAttempts, ...cloudAttempts].map((attempt) => [attempt.id, attempt]));
+	const trainingAttempts = [...attemptsById.values()].sort((a, b) => a.completedAt - b.completedAt).slice(-500);
+	sessionStore.set({ ...local, userId: username, ratings: ratingMap, srs: srsMap, trainingAttempts, totalSolved: trainingAttempts.filter((a) => a.correct).length, streak: calculateStreak(trainingAttempts), moduleProgress: createProgressMap(trainingAttempts, false), loadedPuzzles: [] });
 	persistenceSyncStatus.set('synced');
 }
 

@@ -17,7 +17,7 @@ export async function resolveLatest<T>(
     const value = await task;
     return request.isCurrent(requestId) ? value : null;
   } catch {
-    return request.isCurrent(requestId) ? null : null;
+    return null;
   }
 }
 
