@@ -8,7 +8,7 @@
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
   import { recordModuleAttempt } from '../../stores/session';
-  import { createLatestRequest } from '../async/latestRequest';
+  import { createLatestRequest, resolveLatest } from '../async/latestRequest';
   import {
     DECISION_SCENARIOS,
     isDecisionProcessReady,
@@ -62,7 +62,7 @@
     discoveredReply = null;
     feedback = 'Commitment recorded. Waiting for the opponent reply...';
 
-    void engine.getBestMove(beforeFen).catch(() => '').then((bestMove) => {
+    void resolveLatest(latestRequest, requestId, engine.getBestMove(beforeFen)).then((bestMove) => {
       if (!latestRequest.isCurrent(requestId)) return;
       discoveredCandidate = bestMove ? sanForUciMove(beforeFen, bestMove) : null;
       const terminal = getTerminalState(new Chess(afterFen));
@@ -72,14 +72,14 @@
         feedback = `Commitment complete. Position is ${terminal}.`;
         return;
       }
-      return engine.getBestMove(afterFen).catch(() => '').then((reply) => {
+      return resolveLatest(latestRequest, requestId, engine.getBestMove(afterFen)).then((reply) => {
         if (!latestRequest.isCurrent(requestId)) return;
         const response = reply ? applyUciMove(afterFen, reply) : null;
         if (response) currentFen = response.afterFen;
         discoveredReply = response ? response.move.san : null;
         thinking = false;
         rounds++;
-        feedback = response ? `Commitment complete. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Commitment complete. No engine reply was available.';
+        feedback = response && reply ? `Commitment complete. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Commitment complete. No engine reply was available.';
       });
     });
   }

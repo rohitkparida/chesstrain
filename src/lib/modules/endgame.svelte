@@ -8,7 +8,7 @@
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
   import { recordModuleAttempt } from '../../stores/session';
-  import { createLatestRequest } from '../async/latestRequest';
+  import { createLatestRequest, resolveLatest } from '../async/latestRequest';
   import {
     ENDGAME_SCENARIOS,
     legalCueAnnotations,
@@ -60,7 +60,7 @@
       feedback = `Terminal outcome: ${terminalState}.`;
       return;
     }
-    void engine.getBestMove(afterFen).catch(() => '').then((reply) => {
+    void resolveLatest(latestRequest, requestId, engine.getBestMove(afterFen)).then((reply) => {
         if (!latestRequest.isCurrent(requestId)) return;
         const response = reply ? applyUciMove(afterFen, reply) : null;
         if (response) {
@@ -72,7 +72,7 @@
         revealedCues = true;
         rounds++;
         if (lastResult && scoreEndgameResult(scenario.theoreticalResult, lastResult).preserved) preserved++;
-        feedback = response ? `Result ${lastResult === scenario.theoreticalResult ? 'preserved' : 'at risk'}. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Move recorded. No engine reply was available.';
+        feedback = response && reply ? `Result ${lastResult === scenario.theoreticalResult ? 'preserved' : 'at risk'}. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Move recorded. No engine reply was available.';
     });
   }
 

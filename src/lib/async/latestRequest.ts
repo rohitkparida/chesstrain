@@ -4,6 +4,23 @@ export interface LatestRequest {
 	cancel(): void;
 }
 
+/** Resolve an async task only while its request is still current.
+ * Rejected engine tasks are treated as unavailable results so callers can
+ * finish their normal UI transition without leaking unhandled rejections.
+ */
+export async function resolveLatest<T>(
+  request: LatestRequest,
+  requestId: number,
+  task: Promise<T>
+): Promise<T | null> {
+  try {
+    const value = await task;
+    return request.isCurrent(requestId) ? value : null;
+  } catch {
+    return request.isCurrent(requestId) ? null : null;
+  }
+}
+
 export function createLatestRequest(): LatestRequest {
 	let current = 0;
 	return {

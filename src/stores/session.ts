@@ -81,6 +81,17 @@ let cloudUserId: string | null = null;
 const cloudEnabled = supabaseConfigured && import.meta.env.MODE !== 'test';
 const cloudRepositories = supabase ? createCloudRepositories(supabase) : null;
 
+export type PersistenceSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
+/** Observable status for optional UI/diagnostics; local progress is always authoritative. */
+export const persistenceSyncStatus = writable<PersistenceSyncStatus>('local');
+let pendingCloudWrites = 0;
+function beginCloudWrite() { pendingCloudWrites++; persistenceSyncStatus.set('syncing'); }
+function finishCloudWrite(ok: boolean) {
+	pendingCloudWrites = Math.max(0, pendingCloudWrites - 1);
+	if (!ok) persistenceSyncStatus.set('error');
+	else if (pendingCloudWrites === 0) persistenceSyncStatus.set('synced');
+}
+
 const CLOUD_MODULES = new Set<TrainingModuleId>(['board-grip', 'tactics', 'openings', 'calculation', 'positional', 'decision', 'endgame', 'mistakes']);
 
 /** Replace the local cache with the authenticated user's cloud learning data. */
@@ -88,15 +99,26 @@ export async function hydrateCloudSession(userId: string, username: string): Pro
 	if (!cloudEnabled || !cloudRepositories || username === GUEST_USERNAME) return;
 	cloudUserId = userId;
 	sessionOwner = username;
-	const [ratings, cards, attempts] = await Promise.all([
-		cloudRepositories.ratings.list(userId), cloudRepositories.srs.list(userId), cloudRepositories.attempts.list(userId)
-	]);
+	persistenceSyncStatus.set('syncing');
+	let ratings: Awaited<ReturnType<typeof cloudRepositories.ratings.list>>;
+	let cards: Awaited<ReturnType<typeof cloudRepositories.srs.list>>;
+	let attempts: Awaited<ReturnType<typeof cloudRepositories.attempts.list>>;
+	try {
+		[ratings, cards, attempts] = await Promise.all([
+			cloudRepositories.ratings.list(userId), cloudRepositories.srs.list(userId), cloudRepositories.attempts.list(userId)
+		]);
+	} catch {
+		// Keep the local-first session intact when the network is unavailable.
+		persistenceSyncStatus.set('error');
+		return;
+	}
 	const ratingMap: Record<string, number> = { ...defaultSession.ratings };
 	for (const rating of ratings) ratingMap[`${rating.skill}:${rating.subtype}`] = rating.elo;
 	const srsMap: Record<string, SRSEntry> = {};
 	for (const card of cards) srsMap[card.exerciseId] = { puzzleId: card.exerciseId, repetition: card.repetition, interval: card.intervalDays, easeFactor: card.easeFactor, nextScheduledDate: card.nextReviewAt.getTime() };
 	const trainingAttempts = attempts.filter((a) => CLOUD_MODULES.has(a.module as TrainingModuleId)).map(cloudAttemptToTrainingAttempt).reverse();
 	sessionStore.set({ ...defaultSession, userId: username, ratings: ratingMap, srs: srsMap, trainingAttempts, totalSolved: trainingAttempts.filter((a) => a.correct).length, streak: calculateStreak(trainingAttempts), moduleProgress: createProgressMap(trainingAttempts, false), loadedPuzzles: [] });
+	persistenceSyncStatus.set('synced');
 }
 
 function cloudAttemptToTrainingAttempt(a: TrainingAttemptRecord): TrainingAttempt {
@@ -111,17 +133,20 @@ function calculateStreak(attempts: TrainingAttempt[]): number {
 
 function persistCloudAttempt(attempt: TrainingAttempt): void {
 	if (!cloudEnabled || !cloudRepositories || !cloudUserId || attempt.userId !== sessionOwner) return;
-	void cloudRepositories.attempts.insert({ id: attempt.id, userId: cloudUserId, exerciseId: attempt.exerciseId, module: attempt.module, score: attempt.score, assistance: attempt.assistance, durationMs: attempt.durationMs, startedAt: new Date(attempt.startedAt), completedAt: new Date(attempt.completedAt), result: attempt.result ?? null, source: attempt.source ?? null, tags: [...(attempt.tags ?? [])] }).catch(() => {});
+	beginCloudWrite();
+	void cloudRepositories.attempts.insert({ id: attempt.id, userId: cloudUserId, exerciseId: attempt.exerciseId, module: attempt.module, score: attempt.score, assistance: attempt.assistance, durationMs: attempt.durationMs, startedAt: new Date(attempt.startedAt), completedAt: new Date(attempt.completedAt), result: attempt.result ?? null, source: attempt.source ?? null, tags: [...(attempt.tags ?? [])] }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
 }
 
 function persistCloudRating(skill: string, subtype: string, elo: number): void {
 	if (!cloudEnabled || !cloudRepositories || !cloudUserId) return;
-	void cloudRepositories.ratings.upsert({ userId: cloudUserId, skill, subtype, elo, confidence: 0.5 }).catch(() => {});
+	beginCloudWrite();
+	void cloudRepositories.ratings.upsert({ userId: cloudUserId, skill, subtype, elo, confidence: 0.5 }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
 }
 
 function persistCloudSrs(exerciseId: string, value: SRSEntry): void {
 	if (!cloudEnabled || !cloudRepositories || !cloudUserId) return;
-	void cloudRepositories.srs.upsert({ userId: cloudUserId, exerciseId, repetition: value.repetition, intervalDays: value.interval, easeFactor: value.easeFactor, nextReviewAt: new Date(value.nextScheduledDate), lapses: 0, updatedAt: new Date() }).catch(() => {});
+	beginCloudWrite();
+	void cloudRepositories.srs.upsert({ userId: cloudUserId, exerciseId, repetition: value.repetition, intervalDays: value.interval, easeFactor: value.easeFactor, nextReviewAt: new Date(value.nextScheduledDate), lapses: 0, updatedAt: new Date() }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
 }
 
 function loadFromStorage(username = sessionOwner): Partial<SessionState> {
