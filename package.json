@@ -11,7 +11,8 @@
 		"cloudflare:whoami": "wrangler whoami",
 		"cloudflare:login": "wrangler login",
 		"preview": "vite preview",
-		"test": "vitest run",
+		"test": "vitest run --exclude src/lib/chess/forcedMate.benchmark.test.ts",
+		"test:benchmark": "vitest run src/lib/chess/forcedMate.benchmark.test.ts --reporter=verbose",
 		"test:e2e": "playwright test",
 		"test:watch": "vitest",
 		"prepare": "svelte-kit sync || echo ''",
@@ -36,7 +37,7 @@
 		"wrangler": "^4.112.0"
 	},
 	"dependencies": {
-		"@supabase/supabase-js": "^2.108.1",
+		"@supabase/supabase-js": "^2.112.1",
 		"chess.js": "^1.4.0",
 		"chessground": "^9.2.1",
 		"pgn-parser": "^2.2.1",

@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Chess } from 'chess.js';
   import ChessBoard from '../../../components/ChessBoard.svelte';
   import TrainingModuleShell from '../../../components/TrainingModuleShell.svelte';
   import ActionButton from '../../../components/ActionButton.svelte';
   import { StockfishEngine } from '$lib/chess/engine';
-  import { extractGameMoves, hasAmbiguousAccountColor, mistakeCacheKey, parseCachedMistakes, serializeMistakes, type GameMoveCandidate } from '$lib/learning/gameMistakes';
+import { analyzeCandidatesForReview, extractGameMoves, hasAmbiguousAccountColor, mistakeCacheKey, parseCachedMistakes, serializeMistakes, personalMistakeToReview, type GameMoveCandidate, type ReviewMistake } from '$lib/learning/gameMistakes';
   import { applyCoordinateMove, applyUciMove, sanForUciMove, type AppliedMove } from '$lib/chess/moves';
   import MistakeReplayBoard from './MistakeReplayBoard.svelte';
   import { recordModuleAttempt } from '../../../stores/session';
@@ -13,13 +12,15 @@
 import { sessionStore } from '../../../stores/session';
 import { profileStore } from '../../../stores/profile';
 import { mistakeSyncStore, startMistakeSync, getPreWarmedMistakes, setPreWarmedMistakes } from '../../../stores/mistakeSync';
-import { createIndexedDbMistakeRepository } from '$lib/chesscom/repository';
-import type { PersonalMistakeExercise } from '$lib/chesscom/types';
+import { createCloudBackedMistakeRepository, createIndexedDbMistakeRepository } from '$lib/chesscom/repository';
+import { supabase } from '$lib/account/supabaseClient';
+import { createCloudRepositories } from '$lib/cloud/repositories';
 import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
+import { createLatestRequest } from '$lib/async/latestRequest';
 
   import { authStore } from '../../../stores/auth';
 
-  type Mistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
+  type Mistake = ReviewMistake;
 
   function getInitialMistakesData() {
     if (typeof window === 'undefined') {
@@ -47,7 +48,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
         if (cached.username) loadedUsername = cached.username;
         if (!loadedMistakes.length && cached.mistakes.length) {
           loadedMistakes = cached.mistakes;
-          setPreWarmedMistakes(loadedMistakes);
+          setPreWarmedMistakes(userId, loadedMistakes);
         }
       }
     }
@@ -72,13 +73,19 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   let replay = $state<{ fen: string; move: string; label: string }[]>([]); let replayStep = $state(0); let replayReady = $state(false);
   let analysisIndex = $state(0);
   let syncState = $state(get(mistakeSyncStore));
-  let analysisGeneration = 0;
+  const analysisRequests = createLatestRequest();
   let syncUnsubscribe: (() => void) | null = null;
   let backgroundCoordinator: MistakeSyncCoordinator | null = null;
-  const mistakeRepository = createIndexedDbMistakeRepository();
+  let mistakeRepository = createIndexedDbMistakeRepository();
 
   let replayCache = new Map<number, { fen: string; move: string; label: string }[]>();
   let precalculatingIndices = new Set<number>();
+
+  onMount(async () => {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getUser();
+    if (data.user) mistakeRepository = createCloudBackedMistakeRepository(data.user.id, createCloudRepositories(supabase), mistakeRepository);
+  });
 
   function isCorrectMove(fen: string, from: string, to: string, applied: AppliedMove, bestMove: string): boolean {
     const cleanBest = bestMove.trim();
@@ -196,30 +203,12 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
     }
   });
 
-  function savedMistakeToReview(exercise: PersonalMistakeExercise): Mistake | null {
-    if (exercise.verificationStatus === 'discarded') return null;
-    if (exercise.ply <= 10) return null; // Exclude opening moves (<= Move 5)
-    if (exercise.lossCp < 150) return null; // Exclude minor < 1.5 pawn losses from old cache
-    const board = new Chess(exercise.fen);
-    let played = null;
-    if (exercise.playedMove && exercise.playedMove.length >= 4) {
-      try {
-        played = board.move({ from: exercise.playedMove.slice(0, 2), to: exercise.playedMove.slice(2, 4), promotion: (exercise.playedMove[4] as 'q' | 'r' | 'b' | 'n' | undefined) || 'q' });
-      } catch {}
-    }
-    if (!played && exercise.playedSan) {
-      try { played = board.move(exercise.playedSan); } catch {}
-    }
-    if (!played) return null;
-    return { ply: exercise.ply, moveNumber: Math.ceil(exercise.ply / 2), color: played.color, move: played, fen: exercise.fen, afterFen: exercise.afterFen, bestMove: exercise.bestMove, loss: exercise.lossCp, gameId: exercise.gameId };
-  }
-
   async function loadBackgroundMistakes() {
     const userId = get(sessionStore).userId ?? 'local-player';
     const connection = await mistakeRepository.getConnection(userId);
     if (!connection) return;
     const saved = await mistakeRepository.listMistakes(userId, connection.playerId);
-    const reviewable = saved.map(savedMistakeToReview).filter((value): value is Mistake => value !== null);
+    const reviewable = saved.map(personalMistakeToReview).filter((value): value is Mistake => value !== null);
     if (reviewable.length) { mistakes = reviewable; active = 0; reviewFinished = false; status = `Loaded ${reviewable.length} saved mistake${reviewable.length === 1 ? '' : 's'}.`; precalculateUpcoming(0); }
   }
 
@@ -236,32 +225,30 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
   function analyzeGame() {
     try { candidates = extractGameMoves(pgn, color, username.trim() || undefined); } catch { status = 'That PGN could not be read. Check the pasted game.'; return; }
     if (!candidates.length) { status = 'No moves found for that side.'; return; }
-    mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisIndex = 0; analysisGeneration++;
+    mistakes = []; active = 0; reviewFinished = false; activeAttempted = false; analyzing = true; analysisIndex = 0;
     replayCache.clear(); precalculatingIndices.clear();
     status = `Analyzing move 1 of ${candidates.length}...`;
-    engine?.terminate(); engine = new StockfishEngine(); void analyzeNext(0, analysisGeneration);
-  }
-  async function analyzeNext(index: number, generation = analysisGeneration) {
-    if (generation !== analysisGeneration) return;
-    const candidate = candidates[index];
-    if (!candidate || !engine) { analyzing = false; status = mistakes.length ? `Found ${mistakes.length} move${mistakes.length === 1 ? '' : 's'} that need review.` : 'No moves worsened your position by about 0.8 pawn or more.'; persistMistakes(); precalculateUpcoming(0); return; }
-      status = `Analyzing move ${index + 1} of ${candidates.length}...`;
-    const activeEngine = engine;
-    try {
-      const before = await activeEngine.getEval(candidate.fen);
-      const after = await activeEngine.getEval(candidate.afterFen);
-      if (generation !== analysisGeneration) return;
-      const beforePerspective = color === 'w' ? before.evalCp : -before.evalCp;
-      const afterPerspective = color === 'w' ? -after.evalCp : after.evalCp;
-      const loss = beforePerspective - afterPerspective;
-      if (loss >= 80 && before.bestMove) mistakes = [...mistakes, { ...candidate, bestMove: before.bestMove, loss }];
+    engine?.terminate(); engine = new StockfishEngine();
+    const requestId = analysisRequests.begin();
+    void analyzeCandidatesForReview(engine, candidates, color, {
+      signal: undefined,
+      onProgress: ({ completed, total }) => {
+        if (!analysisRequests.isCurrent(requestId)) return;
+        analysisIndex = completed;
+        status = `Analyzing move ${completed + 1} of ${total}...`;
+      },
+      onResult: (review) => {
+        if (analysisRequests.isCurrent(requestId)) mistakes = [...mistakes, review];
+      }
+    }).then(() => {
+      if (!analysisRequests.isCurrent(requestId)) return;
+      analyzing = false;
+      status = mistakes.length ? `Found ${mistakes.length} move${mistakes.length === 1 ? '' : 's'} that need review.` : 'No moves worsened your position by about 0.8 pawn or more.';
       persistMistakes();
-      precalculateUpcoming(active);
-      analysisIndex = index + 1;
-      void analyzeNext(index + 1, generation);
-    } catch {
-      if (generation === analysisGeneration) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; precalculateUpcoming(active); }
-    }
+      precalculateUpcoming(0);
+    }).catch(() => {
+      if (analysisRequests.isCurrent(requestId)) { analyzing = false; persistMistakes(); status = 'Analysis stopped.'; precalculateUpcoming(active); }
+    });
   }
   function cancelAnalysis() {
     if (backgroundCoordinator && analyzing) {
@@ -270,7 +257,7 @@ import type { MistakeSyncCoordinator } from '$lib/chesscom/coordinator';
       status = 'Background analysis paused. You can resume it from this page.';
       return;
     }
-    analysisGeneration++;
+    analysisRequests.cancel();
     analyzing = false;
     persistMistakes();
     engine?.terminate();

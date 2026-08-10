@@ -97,7 +97,12 @@
   });
 
   function handleSubmitResponse(response: unknown) {
-    runner.submit(response as InteractionContracts[K]['response']);
+    const typedResponse = response as InteractionContracts[K]['response'];
+    if (runnerState.definition && 'evaluateStep' in runnerState.definition && typeof runnerState.definition.evaluateStep === 'function') {
+      runner.submitStep(typedResponse);
+      return;
+    }
+    runner.submit(typedResponse);
   }
 
   let initializedMode = false;
@@ -172,6 +177,8 @@
       task={runnerState.instance.prompt}
       taskKeywords={taskKeywords}
       onSkip={handleSkip}
+      onContinue={handleContinue}
+      continueVisible={runnerState.status === 'feedback' && !sprintComplete && !isLoading}
     >
       {#snippet children()}
         <div class="drill-body" class:is-loading={isLoading}>
@@ -231,7 +238,6 @@
               <div class="feedback-badge" class:correct={runnerState.assessment?.correct} class:incorrect={!runnerState.assessment?.correct}>
                 <span class="feedback-msg">{runnerState.assessment?.feedback ?? ''}</span>
               </div>
-              <ActionButton variant="primary" onclick={handleContinue}>Continue &rarr;</ActionButton>
             {/if}
           </div>
 
@@ -267,6 +273,8 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
   .grace-notice {
     font-size: 0.76rem;

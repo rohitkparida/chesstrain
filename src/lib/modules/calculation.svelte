@@ -8,9 +8,10 @@
   import { recordModuleAttempt } from '../../stores/session';
   import { buildCalculationReplay, type CalculationReplay } from '../learning/calculationReplay';
   import type { ObjectiveMetric } from '../learning/objectiveScoring';
+  import { CALCULATION_SOLUTION_LINE, CALCULATION_START_FEN } from './calculationScenarioContent';
 
   // Keep the curated line legal from the starting FEN; an impossible reply makes the drill unscorable.
-  const solutionLine = ["Nxf7", "Rxf7", "Qd5"];
+  const solutionLine = [...CALCULATION_SOLUTION_LINE];
   let notationInput = $state("");
   let feedback = $state("");
   let steps = $state<string[]>([]);
@@ -29,7 +30,7 @@
   let startedAt = Date.now();
   let lineFen = $state('');
 
-  const startFen = 'r3kr2/5p1p/8/6N1/8/8/PPP1PPPP/3QK3 w - - 0 1';
+  const startFen = CALCULATION_START_FEN;
 
   function handleBoardMove(from: string, to: string, afterFen: string) {
     try {
@@ -97,7 +98,7 @@
   }
 
   function reset() {
-    if (blindfoldTimer) clearTimeout(blindfoldTimer);
+    if (blindfoldTimer) clearInterval(blindfoldTimer);
     notationInput = "";
     feedback = "";
     steps = [];
@@ -114,7 +115,7 @@
     startedAt = Date.now();
   }
 
-  onDestroy(() => { if (blindfoldTimer) clearTimeout(blindfoldTimer); });
+  onDestroy(() => { if (blindfoldTimer) clearInterval(blindfoldTimer); });
 </script>
 
 <TrainingModuleShell
@@ -123,6 +124,9 @@
   taskKeywords={['notation', 'Rxf7', 'Qh5+']}
   onReset={reset}
   onSkip={reset}
+  onContinue={reset}
+  continueVisible={locked}
+  continueLabel="Try again"
 >
   <details class="mode-actions">
     <summary>Try blindfold mode</summary>
@@ -184,7 +188,6 @@
       </div>
     </div>
   {/if}
-  {#if locked}<button class="continue-btn" onclick={reset}>Try again</button>{/if}
 </TrainingModuleShell>
 
 <style>
@@ -197,7 +200,6 @@
     cursor: pointer;
     font-weight: 700;
   }
-  .continue-btn { align-self: flex-start; border: 1px solid var(--accent-border); background: var(--accent-dim); color: var(--accent); border-radius: 6px; padding: 0.65rem 1rem; cursor: pointer; font-weight: 700; }
   .blindfold-btn { background: transparent; color: var(--accent); border: 1px solid var(--accent-border); }
   button:disabled, input:disabled { opacity: 0.5; cursor: not-allowed; }
   .board-layout { display: flex; justify-content: center; }

@@ -3,7 +3,8 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import { accuracyPercent } from '../learning/objectiveScoring';
-  import { chooseInterleavedLine, type OpeningLine } from '../learning/openingPractice';
+  import { chooseInterleavedLine } from '../learning/openingPractice';
+  import { OPENING_LINES } from './openingContent';
   import { STARTING_FEN } from '../chess/constants';
   import { recordModuleAttempt } from '../../stores/session';
   
@@ -15,19 +16,7 @@
   let correctMoves = $state(0);
   
   // Repertoire tree
-  const lines: OpeningLine[] = [
-  { id: 'ruy-lopez', name: 'Ruy Lopez', moves: [
-    { from: "e2", to: "e4", replyFen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", replyText: "Opponent played 1... e5. Now play 2. Nf3." },
-    { from: "g1", to: "f3", replyFen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", replyText: "Opponent played 2... Nc6. Now play 3. Bb5 (Ruy Lopez)." },
-    { from: "f1", to: "b5", replyFen: "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", replyText: "Excellent! Repertoire goal reached. Ruy Lopez main line set." }
-  ] },
-  { id: 'italian', name: 'Italian Game', moves: [
-    { from: 'e2', to: 'e4', replyFen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2', replyText: 'Opponent played 1... e5. Now recall 2. Nf3.' },
-    { from: 'g1', to: 'f3', replyFen: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3', replyText: 'Opponent played 2... Nc6. Now recall 3. Bc4 (Italian Game).' },
-    { from: 'f1', to: 'c4', replyFen: 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3', replyText: 'Italian Game line complete. Restart to practice the other line.' }
-  ] }
-  ];
-  let moves = $derived(lines.find((line) => line.id === lineId)?.moves ?? []);
+  let moves = $derived(OPENING_LINES.find((line) => line.id === lineId)?.moves ?? []);
 
   function handleMove(from: string, to: string) {
     if (currentStep >= moves.length) return false;
@@ -48,8 +37,8 @@
   }
 
   function reset() {
-    const nextLine = chooseInterleavedLine(lines, lineId);
-    lineId = nextLine?.id ?? lines[0].id;
+    const nextLine = chooseInterleavedLine(OPENING_LINES, lineId);
+    lineId = nextLine?.id ?? OPENING_LINES[0].id;
     currentStep = 0;
     fen = STARTING_FEN;
       feedback = 'Line selected. Make the next move.';
@@ -65,6 +54,9 @@
   resetLabel="Restart opening line"
   onReset={reset}
   onSkip={reset}
+  onContinue={reset}
+  continueVisible={currentStep >= moves.length}
+  continueLabel="Continue to another line"
 >
   
   <div class="board-layout">
@@ -90,7 +82,6 @@
   {/if}
 
   <p class="status-text">{feedback}</p>
-  {#if currentStep >= moves.length}<button class="continue" onclick={reset}>Continue to another line</button>{/if}
 </TrainingModuleShell>
 
 <style>

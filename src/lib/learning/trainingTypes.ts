@@ -178,6 +178,14 @@ export function createTrainingAttempt(params: {
 
 export type DailyPlanReason = 'due-review' | 'weakest-unlocked' | 'new';
 
+/** A finite Today slot; it intentionally carries no drill-private data. */
+export interface DailyPlanCandidate {
+	id: string;
+	module: TrainingModuleId;
+	estimatedSeconds: number;
+	positionFingerprint?: string;
+}
+
 export interface DailyPlanItem {
 	exerciseId: string;
 	module: TrainingModuleId;

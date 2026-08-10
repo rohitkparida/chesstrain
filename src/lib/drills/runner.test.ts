@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DrillRunnerMachine } from './runner';
-import type { DrillDefinition, GeneratedDrill, DrillAssessment } from './types';
+import type { DrillDefinition, GeneratedDrill, DrillAssessment, StepwiseDrillDefinition } from './types';
 
 describe('DrillRunnerMachine', () => {
   const fakeDefinition: DrillDefinition<'square-tap'> = {
@@ -130,5 +130,54 @@ describe('DrillRunnerMachine', () => {
 
     expect(runner.getState().status).toBe('loading');
     expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it('supports stepwise responses while preserving one final attempt record', async () => {
+    const recordSpy = vi.fn();
+    const stepDefinition: StepwiseDrillDefinition<'square-tap'> = {
+      ...fakeDefinition,
+      id: 'test.stepwise',
+      stepCount: () => 2,
+      evaluateStep: (_privateData, response, stepIndex) => {
+        const expected = stepIndex === 0 ? 'e4' : 'e5';
+        const correct = response === expected;
+        return {
+          score: correct ? 1 : 0,
+          correct,
+          complete: stepIndex === 1,
+          feedback: correct ? 'Correct step' : `Expected ${expected}`
+        };
+      }
+    };
+    const runner = new DrillRunnerMachine<'square-tap'>({ onRecordAttempt: recordSpy });
+    runner.start(stepDefinition, { ...fakeInstance, drillId: 'test.stepwise' });
+
+    const first = await runner.submitStep('e4');
+    expect(first?.correct).toBe(true);
+    expect(runner.getState().status).toBe('active');
+    expect(runner.getState().stepIndex).toBe(1);
+    expect(recordSpy).not.toHaveBeenCalled();
+
+    const second = await runner.submitStep('e5');
+    expect(second?.correct).toBe(true);
+    expect(runner.getState().status).toBe('feedback');
+    expect(runner.getState().stepIndex).toBe(2);
+    expect(runner.getState().stepResponses).toEqual(['e4', 'e5']);
+    expect(recordSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends a stepwise drill immediately on an incorrect committed step', async () => {
+    const recordSpy = vi.fn();
+    const stepDefinition: StepwiseDrillDefinition<'square-tap'> = {
+      ...fakeDefinition,
+      stepCount: () => 2,
+      evaluateStep: () => ({ score: 0, correct: false, complete: false, feedback: 'Incorrect' })
+    };
+    const runner = new DrillRunnerMachine<'square-tap'>({ onRecordAttempt: recordSpy });
+    runner.start(stepDefinition, fakeInstance);
+
+    await runner.submitStep('a1');
+    expect(runner.getState().status).toBe('feedback');
+    expect(recordSpy).toHaveBeenCalledTimes(1);
   });
 });

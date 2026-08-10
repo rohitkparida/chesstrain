@@ -5,6 +5,7 @@
   import type { BoardAnnotation } from '../chess/annotations';
   import { scorePositionalAnalysis, type PositionalRubricScore } from '../learning/objectiveScoring';
   import { recordModuleAttempt } from '../../stores/session';
+  import { POSITIONAL_FEN, POSITIONAL_OVERLAYS, POSITIONAL_PLANS } from './positionalScenarioContent';
   
   let evalScore = $state(0);
   let feedback = $state("");
@@ -17,21 +18,11 @@
   let step = $state(1);
   let startedAt = Date.now();
 
-  const positionFen = 'r1bq1rk1/pp2ppbp/2np1np1/8/3NP3/2N1BP2/PPPQ2PP/R3KB1R w KQ - 3 8';
-  const overlays = [
-    { label: 'Weak squares', annotations: [{ from: 'd6', color: '#ef5c5c', kind: 'highlight' }, { from: 'c5', color: '#ef5c5c', kind: 'highlight' }], detail: 'd6 is the main pressure point; c5 is a useful supporting square.' },
-    { label: 'Open files', annotations: [{ from: 'd1', to: 'd8', color: '#4696eb' }], detail: 'The d-file is the clearest route for pressure against the d6 pawn.' },
-    { label: 'Pawn break', annotations: [{ from: 'c4', to: 'c5', color: '#f5b041' }], detail: 'c4 is the useful break: it challenges the centre and opens routes for the pieces.' },
-    { label: 'Preferred route', annotations: [{ from: 'c3', to: 'd3', color: '#49be7d' }, { from: 'd3', to: 'e4', color: '#49be7d' }, { from: 'e4', to: 'e5', color: '#49be7d' }], detail: 'The knight can reroute from c3 through d3 toward the strong e5 square.' }
-  ];
+  const positionFen = POSITIONAL_FEN;
+  const overlays = POSITIONAL_OVERLAYS;
 
   // Plan ranking structures
-  let plans = $state([
-    { id: "a", text: "Push the queenside pawns (spatial expansion)" },
-    { id: "b", text: "Reroute the knight to e5 via d3" },
-    { id: "c", text: "Simplify center structure via exchanges" },
-    { id: "d", text: "Open the f-file for the active rook" }
-  ]);
+  let plans = $state(POSITIONAL_PLANS.map((plan) => ({ ...plan })));
 
   function submitAnalysis() {
     if (![spaceAdv, weakSquares, pawnStructure].some(value => value.trim().length > 0)) {
@@ -82,12 +73,7 @@
     overlayIndex = 0;
     step = 1;
     startedAt = Date.now();
-    plans = [
-      { id: "a", text: "Push the queenside pawns (spatial expansion)" },
-      { id: "b", text: "Reroute the knight to e5 via d3" },
-      { id: "c", text: "Simplify center structure via exchanges" },
-      { id: "d", text: "Open the f-file for the active rook" }
-    ];
+    plans = POSITIONAL_PLANS.map((plan) => ({ ...plan }));
   }
 </script>
 
@@ -97,6 +83,9 @@
   taskKeywords={['Evaluate', 'rank the plans']}
   onReset={reset}
   onSkip={reset}
+  onContinue={reset}
+  continueVisible={rubric !== null}
+  continueLabel="Try this position again"
 >
   
   <div class="board-layout">
@@ -170,8 +159,6 @@
       ]}
     />
   {/if}
-  {#if rubric}<button class="continue" onclick={() => { rubric = null; feedback = ''; step = 1; startedAt = Date.now(); }}>Try this position again</button>{/if}
-
   {#if feedback}
     <div class="feedback-card">
       <h3>Analysis Feedback</h3>

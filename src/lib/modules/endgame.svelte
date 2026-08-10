@@ -8,6 +8,7 @@
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
   import { recordModuleAttempt } from '../../stores/session';
+  import { createLatestRequest } from '../async/latestRequest';
   import {
     ENDGAME_SCENARIOS,
     legalCueAnnotations,
@@ -27,7 +28,7 @@
   let preserved = $state(0);
   let lastResult = $state<TheoreticalResult | null>(null);
   let revealedCues = $state(false);
-  let requestGeneration = 0;
+  const latestRequest = createLatestRequest();
   let engine: StockfishEngine;
   let cueAnnotations = $derived(legalCueAnnotations(scenario.fen ?? '', scenario.cues.flatMap((cue) => cue.annotations)));
 
@@ -40,7 +41,7 @@
 
   function handleMove(from: string, to: string, afterFen: string) {
     if (thinking || terminalState !== 'ongoing') return;
-    const generation = ++requestGeneration;
+    const requestId = latestRequest.begin();
     const beforeFen = currentFen;
     const userMove = `${from}${to}`.toLowerCase();
     const movePreserves = scenario.preservingMoves.includes(userMove);
@@ -60,7 +61,7 @@
       return;
     }
     void engine.getBestMove(afterFen).catch(() => '').then((reply) => {
-        if (generation !== requestGeneration) return;
+        if (!latestRequest.isCurrent(requestId)) return;
         const response = reply ? applyUciMove(afterFen, reply) : null;
         if (response) {
           currentFen = response.afterFen;
@@ -76,7 +77,7 @@
   }
 
   function reset() {
-    requestGeneration++;
+    latestRequest.cancel();
     currentFen = scenario.fen ?? '';
     classifyTerminal(currentFen);
     thinking = false;
@@ -99,7 +100,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Endgame practice" task="Win (or draw if defending) using clean technique." taskKeywords={['Win', 'draw', 'clean technique']} onReset={reset} onSkip={nextScenario}>
+<TrainingModuleShell title="Endgame practice" task="Win (or draw if defending) using clean technique." taskKeywords={['Win', 'draw', 'clean technique']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={rounds > 0 && !thinking} continueLabel="Next">
   <p class="scenario-meta">{scenario.title}</p>
   <ChessBoard
     fen={currentFen}
@@ -126,7 +127,6 @@
   {/if}
   {#if lastResult}<p class="result-text" role="status">Result: {lastResult}</p>{/if}
   <p class="status-text" role="status">{feedback}</p>
-  {#if rounds > 0 && !thinking}<button class="next" onclick={nextScenario}>Next</button>{/if}
 </TrainingModuleShell>
 
 <style>
@@ -134,5 +134,4 @@
   .technique-cue { display: flex; flex-direction: column; gap: 0.25rem; border-top: 1px solid var(--border); padding-top: 0.7rem; color: var(--text-3); }
   .technique-cue strong { color: var(--accent); }
   .result-text, .status-text { margin: 0; border-top: 1px solid var(--border); padding-top: 0.7rem; color: var(--text-3); }
-  button { align-self: flex-start; color: var(--accent); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.7rem; cursor: pointer; }
 </style>

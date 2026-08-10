@@ -1,6 +1,70 @@
 import { Chess, type Move } from 'chess.js';
+import type { PersonalMistakeExercise } from '$lib/chesscom/types';
+import type { EngineEval } from '$lib/chess/engine';
 
 export interface GameMoveCandidate { ply: number; moveNumber: number; color: 'w' | 'b'; move: Move; fen: string; afterFen: string; }
+export type ReviewMistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
+
+export interface ReviewAnalysisProgress {
+	completed: number;
+	total: number;
+}
+
+export function reviewMistakeFromEvaluation(
+	candidate: GameMoveCandidate,
+	before: EngineEval,
+	after: EngineEval,
+	perspective: 'w' | 'b',
+	minimumLossCp = 80
+): ReviewMistake | null {
+	if (!before.bestMove) return null;
+	const beforeScore = perspective === 'w' ? before.evalCp : -before.evalCp;
+	const afterScore = perspective === 'w' ? -after.evalCp : after.evalCp;
+	const loss = Math.max(0, Math.round(beforeScore - afterScore));
+	return loss >= minimumLossCp ? { ...candidate, bestMove: before.bestMove, loss } : null;
+}
+
+export function personalMistakeToReview(exercise: PersonalMistakeExercise): ReviewMistake | null {
+  if (exercise.verificationStatus === 'discarded' || exercise.ply <= 10 || exercise.lossCp < 150) return null;
+  const board = new Chess(exercise.fen);
+  let played: Move | null = null;
+  if (exercise.playedMove && exercise.playedMove.length >= 4) {
+    try {
+      played = board.move({ from: exercise.playedMove.slice(0, 2), to: exercise.playedMove.slice(2, 4), promotion: (exercise.playedMove[4] as 'q' | 'r' | 'b' | 'n' | undefined) || 'q' });
+    } catch { /* try SAN below */ }
+  }
+  if (!played && exercise.playedSan) {
+    try { played = board.move(exercise.playedSan); } catch { /* malformed persisted move */ }
+  }
+  if (!played) return null;
+  return { ply: exercise.ply, moveNumber: Math.ceil(exercise.ply / 2), color: played.color, move: played, fen: exercise.fen, afterFen: exercise.afterFen, bestMove: exercise.bestMove, loss: exercise.lossCp, gameId: exercise.gameId };
+}
+
+/**
+ * Runs the lightweight review analysis used by pasted games. Keeping the
+ * candidate/evaluation loop here means every source (pasted PGN or imported
+ * games) feeds the same review model instead of rebuilding it in a route.
+ */
+export async function analyzeCandidatesForReview(
+	engine: { getEval(fen: string, options?: { moveTimeMs?: number; signal?: AbortSignal }): Promise<EngineEval> },
+	candidates: GameMoveCandidate[],
+	perspective: AccountColor,
+	options: { minimumLossCp?: number; moveTimeMs?: number; signal?: AbortSignal; onProgress?: (progress: ReviewAnalysisProgress) => void; onResult?: (review: ReviewMistake) => void } = {}
+): Promise<ReviewMistake[]> {
+	const minimumLossCp = options.minimumLossCp ?? 80;
+	const moveTimeMs = options.moveTimeMs ?? 250;
+	const found: ReviewMistake[] = [];
+	for (let index = 0; index < candidates.length; index += 1) {
+		if (options.signal?.aborted) return found;
+		const candidate = candidates[index];
+		const before = await engine.getEval(candidate.fen, { moveTimeMs, signal: options.signal });
+		const after = await engine.getEval(candidate.afterFen, { moveTimeMs, signal: options.signal });
+		const review = reviewMistakeFromEvaluation(candidate, before, after, perspective, minimumLossCp);
+		if (review) { found.push(review); options.onResult?.(review); }
+		options.onProgress?.({ completed: index + 1, total: candidates.length });
+	}
+	return found;
+}
 
 export interface CachedMistakeSet<T> { username: string; savedAt: number; mistakes: T[]; }
 

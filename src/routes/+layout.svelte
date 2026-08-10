@@ -14,6 +14,7 @@
   let onboardingOpen = $state(false);
   let profileBadge = $derived(profileInitials($profileStore));
   let authenticated = $derived($authStore.authenticated);
+  let authReady = $derived($authStore.ready);
   let mistakeSync = $derived($mistakeSyncStore);
 
   onMount(() => {
@@ -33,12 +34,12 @@
     }
     onboardingOpen = auth.authenticated && !auth.guest && $profileStore.onboardingCompletedAt === null;
     const onLoginRoute = path === '/login' || path.startsWith('/login/');
-    if (!authenticated && !onLoginRoute) {
+    if (authReady && !authenticated && !onLoginRoute) {
       const returnTo = `${path}${page.url.search}${page.url.hash}`;
       const target = `${appPath('/login')}?returnTo=${encodeURIComponent(returnTo)}`;
       if (`${page.url.pathname}${page.url.search}` !== target) void goto(target, { replaceState: true });
     }
-    if (authenticated && onLoginRoute) {
+    if (authReady && authenticated && onLoginRoute) {
       const requested = page.url.searchParams.get('returnTo');
       const destination = requested && requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/login')
         ? requested
@@ -149,7 +150,9 @@
   {/if}
 
   <main class="main-content">
-    {#if authenticated || routePath(page.url.pathname) === '/login'}
+    {#if !authReady}
+      <div class="auth-loading" role="status">Connecting…</div>
+    {:else if authenticated || routePath(page.url.pathname) === '/login'}
       {@render children()}
     {/if}
   </main>

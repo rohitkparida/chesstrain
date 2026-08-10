@@ -4,7 +4,6 @@
   import { onMount } from 'svelte';
   import ActionButton from '../../components/ActionButton.svelte';
   import { selectLocalAccount, signInLocal, startGuestMode } from '../../stores/auth';
-  import { LOCAL_ACCOUNTS } from '$lib/account/localAuth';
   import { appPath, routePath } from '$lib/paths';
 
   let username = $state('');
@@ -32,11 +31,6 @@
     event.preventDefault();
     if (submitting) return;
     const normalizedUsername = username.trim().toLowerCase();
-    if (!LOCAL_ACCOUNTS.some((account) => account.username === normalizedUsername)) {
-      error = 'Incorrect username or password.';
-      password = '';
-      return;
-    }
     rememberUsername(normalizedUsername);
     selectLocalAccount(normalizedUsername);
     submitting = true;

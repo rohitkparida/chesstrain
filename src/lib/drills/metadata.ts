@@ -65,6 +65,13 @@ export const DRILL_METADATA = {
     label: 'Tactics Practice',
     description: 'Solve procedural and Lichess tactical positions.',
     interaction: 'move'
+  },
+  'tactics.forced-mate': {
+    id: 'tactics.forced-mate',
+    module: 'tactics',
+    label: 'Rapid Forced Mate',
+    description: 'Find the only move that forces checkmate.',
+    interaction: 'move'
   }
 } as const satisfies Record<string, DrillMeta>;
 

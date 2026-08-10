@@ -1,4 +1,4 @@
-import type { TrainingExercise, TrainingModuleId } from '$lib/learning/training';
+import type { DailyPlanCandidate, TrainingExercise, TrainingModuleId } from '$lib/learning/training';
 import { appPath } from '$lib/paths';
 
 export interface TrainingModulePresentation {
@@ -20,21 +20,27 @@ export const TRAINING_MODULES: readonly TrainingModulePresentation[] = [
 	{ module: 'mistakes', name: 'My Mistakes', description: 'Practice mistakes from your games.', href: appPath('/train/mistakes'), icon: 'mistakes' }
 ];
 
-export const DAILY_PLAN_EXERCISES: readonly TrainingExercise[] = TRAINING_MODULES.flatMap((entry) =>
+export const DAILY_PLAN_SLOTS: readonly DailyPlanCandidate[] = TRAINING_MODULES.flatMap((entry) =>
 	Array.from({ length: 4 }, (_, index) => ({
 		id: `${entry.module}-daily-${index + 1}`,
 		module: entry.module,
-		type: entry.module,
-		title: `${entry.name} practice ${index + 1}`,
 		estimatedSeconds: entry.module === 'endgame' ? 120 : 60,
-		source: entry.module === 'mistakes' ? 'personal-game' : entry.module === 'openings' ? 'repertoire' : 'curated',
-		verification: entry.module === 'endgame' ? 'stockfish' : 'curated',
-		conceptIds: [`${entry.module}:core`],
 		positionFingerprint: `${entry.module}:daily:${index + 1}`,
-		memoryMode: entry.module === 'openings' || entry.module === 'mistakes' ? 'exact-position' : 'concept-variation',
-		generationVersion: 'catalog-v2'
-	})) as TrainingExercise[]
+}))
 );
+
+// Drill content still uses these repeatable catalog entries; Today consumes only
+// the smaller slot contract above and never passes drill-private fields around.
+export const DAILY_PLAN_EXERCISES: readonly TrainingExercise[] = DAILY_PLAN_SLOTS.map((slot) => ({
+	...slot,
+	type: slot.module,
+	title: `${modulePresentation(slot.module).name} practice`,
+	source: 'curated',
+	verification: 'curated',
+	conceptIds: [`${slot.module}:core`],
+	memoryMode: 'concept-variation',
+	generationVersion: 'catalog-v2'
+})) as TrainingExercise[];
 
 export function modulePresentation(module: TrainingModuleId): TrainingModulePresentation {
 	return TRAINING_MODULES.find((entry) => entry.module === module) ?? TRAINING_MODULES[0];

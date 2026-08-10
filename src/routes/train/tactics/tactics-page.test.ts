@@ -76,8 +76,9 @@ describe('tactics page retrieval integrity', () => {
 		renderTactics();
 		const skipBtn = screen.getByText('Skip');
 		await fireEvent.click(skipBtn);
-		const confirmBtn = screen.getByText('Yes, skip');
-		await fireEvent.click(confirmBtn);
+		const confirmBtn = screen.getAllByText('Skip').at(-1);
+		expect(confirmBtn).toBeDefined();
+		if (confirmBtn) await fireEvent.click(confirmBtn);
 
 		expect(get(sessionStore).history).toHaveLength(0);
 	}, 15000);

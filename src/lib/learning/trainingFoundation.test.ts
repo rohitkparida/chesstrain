@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateDailyPlan, createProgressMap } from './dailyPlan';
 import { fractionalScore } from './objectiveScoring';
-import type { TrainingAttempt, TrainingExercise } from './trainingTypes';
+import type { DailyPlanCandidate, TrainingAttempt, TrainingModuleId } from './trainingTypes';
 
 function attempt(overrides: Partial<TrainingAttempt> = {}): TrainingAttempt {
 	return {
@@ -18,8 +18,8 @@ function attempt(overrides: Partial<TrainingAttempt> = {}): TrainingAttempt {
 	};
 }
 
-function exercise(id: string, module: TrainingExercise['module']): TrainingExercise {
-	return { id, module, type: module, estimatedSeconds: 60 } as TrainingExercise;
+function exercise(id: string, module: TrainingModuleId): DailyPlanCandidate {
+	return { id, module, estimatedSeconds: 60 };
 }
 
 describe('training foundation', () => {
@@ -42,14 +42,14 @@ describe('training foundation', () => {
 		const exercises = [exercise('new', 'openings'), exercise('weak', 'tactics'), exercise('due', 'board-grip')];
 		const input = {
 			userId: 'player',
-			exercises,
+		candidates: exercises,
 			attempts,
 			now: 100,
 			srs: { due: { nextScheduledDate: 1 } },
 			dateKey: '2026-07-18'
 		};
 		const first = generateDailyPlan(input);
-		const second = generateDailyPlan({ ...input, exercises: exercises.slice().reverse() });
+		const second = generateDailyPlan({ ...input, candidates: exercises.slice().reverse() });
 		expect(first).toEqual(second);
 		expect(first.items.map((item) => [item.exerciseId, item.reason])).toEqual([
 			['due', 'due-review'],
