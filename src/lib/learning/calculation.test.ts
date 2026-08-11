@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { assessCalculation } from './calculation';
+import { assessCalculation, isLegalCalculationLine } from './calculation';
 
 const line = ['Nxf7', 'Rxf7', 'Qd5+', 'Kh8', 'Qxa8'];
 
 describe('calculation feedback', () => {
+	it('validates curated lines as complete legal continuations', () => {
+		expect(isLegalCalculationLine('8/8/8/8/8/8/4K3/4k3 w - - 0 1', ['Kf2'])).toBe(false);
+		expect(isLegalCalculationLine('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1', ['e5', 'Nf3'])).toBe(true);
+	});
 	it('does not leak the next move or full solution for a partial line', () => {
 		const result = assessCalculation('Nxf7', line);
 		expect(result.status).toBe('partial');

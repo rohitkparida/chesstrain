@@ -3,11 +3,13 @@
   import { Chess } from 'chess.js';
   import ChessBoard from '../../components/ChessBoard.svelte';
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
+  import { qualityLabel } from '../learning/objectiveScoring';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import { getTerminalState } from '../chess/board';
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
   import { recordModuleAttempt } from '../../stores/session';
+  import { createLatestRequest, resolveLatest } from '../async/latestRequest';
   import {
     DECISION_SCENARIOS,
     isDecisionProcessReady,
@@ -28,7 +30,7 @@
   let lastMoveQuality = $state<number | null>(null);
   let discoveredCandidate = $state<string | null>(null);
   let discoveredReply = $state<string | null>(null);
-  let requestGeneration = 0;
+  const latestRequest = createLatestRequest();
   let engine: StockfishEngine;
 
   let process = $derived(scoreDecisionProcess(scenario, { threatId, candidateIds, refutationId, committed }));
@@ -49,7 +51,7 @@
 
   function handleMove(from: string, to: string, afterFen: string) {
     if (!processReady || thinking || committed) return;
-    const generation = ++requestGeneration;
+    const requestId = latestRequest.begin();
     const userMove = `${from}${to}`.toLowerCase();
     const beforeFen = currentFen;
     thinking = true;
@@ -61,8 +63,8 @@
     discoveredReply = null;
     feedback = 'Commitment recorded. Waiting for the opponent reply...';
 
-    void engine.getBestMove(beforeFen).catch(() => '').then((bestMove) => {
-      if (generation !== requestGeneration) return;
+    void resolveLatest(latestRequest, requestId, engine.getBestMove(beforeFen)).then((bestMove) => {
+      if (!latestRequest.isCurrent(requestId)) return;
       discoveredCandidate = bestMove ? sanForUciMove(beforeFen, bestMove) : null;
       const terminal = getTerminalState(new Chess(afterFen));
       if (terminal !== 'ongoing') {
@@ -71,20 +73,20 @@
         feedback = `Commitment complete. Position is ${terminal}.`;
         return;
       }
-      return engine.getBestMove(afterFen).catch(() => '').then((reply) => {
-        if (generation !== requestGeneration) return;
+      return resolveLatest(latestRequest, requestId, engine.getBestMove(afterFen)).then((reply) => {
+        if (!latestRequest.isCurrent(requestId)) return;
         const response = reply ? applyUciMove(afterFen, reply) : null;
         if (response) currentFen = response.afterFen;
         discoveredReply = response ? response.move.san : null;
         thinking = false;
         rounds++;
-        feedback = response ? `Commitment complete. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Commitment complete. No engine reply was available.';
+        feedback = response && reply ? `Commitment complete. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Commitment complete. No engine reply was available.';
       });
     });
   }
 
   function reset() {
-    requestGeneration++;
+    latestRequest.cancel();
     currentFen = scenario.fen ?? '';
     threatId = null;
     candidateIds = [];
@@ -106,7 +108,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Choosing a Move" task="Complete the checklist before every move." taskKeywords={['checklist']} onReset={reset} onSkip={nextScenario}>
+<TrainingModuleShell title="Choosing a Move" task="Complete the checklist before every move. Several strong moves may be acceptable." taskKeywords={['checklist', 'strong moves']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={committed && !thinking} continueLabel="Next">
   <p class="scenario-meta">Position after {scenario.opponentMove}</p>
 
   <ChessBoard
@@ -168,8 +170,7 @@
       {#if discoveredReply}<span>Engine reply: {discoveredReply}</span>{/if}
     </div>
   {/if}
-  <p class="status-text">{feedback}</p>
-      {#if committed && !thinking}<button class="next" onclick={nextScenario}>Next</button>{/if}
+  <p class="status-text">{rounds > 0 ? `${qualityLabel((process.processScore + (lastMoveQuality ?? 0)) / 2)} ` : ''}{feedback}</p>
 </TrainingModuleShell>
 
 <style>
@@ -187,5 +188,4 @@
   .engine-state, .status-text { border-top: 1px solid var(--border); padding-top: 0.7rem; color: var(--text-3); }
   .engine-state { display: flex; flex-wrap: wrap; gap: 0.8rem; font-size: 0.88rem; }
   .status-text { margin: 0; }
-  .next { align-self: flex-start; color: var(--accent); }
 </style>

@@ -40,4 +40,14 @@ describe('local profile', () => {
       chessComUsername: second.chessComUsername
     });
   });
+
+  it('uses the account defaults when a scoped profile is malformed', () => {
+    const secondary = LOCAL_ACCOUNTS[1];
+    localStorage.setItem(`magnus_profile:${secondary.username}`, JSON.stringify({ displayName: 42 }));
+
+    expect(localProfileRepository.read(secondary.username)).toMatchObject({
+      displayName: secondary.username,
+      chessComUsername: secondary.chessComUsername
+    });
+  });
 });

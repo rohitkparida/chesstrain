@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
-import type { DrillDefinition } from '../types';
+import type { StepwiseDrillDefinition } from '../types';
 import { DRILL_METADATA } from '../metadata';
-import { generateProceduralTacticsPuzzle, type ProceduralPuzzle } from '$lib/learning/proceduralTactics';
+import { generateLiveTacticalPuzzle, generateProceduralTacticsPuzzle, type ProceduralPuzzle } from '$lib/learning/proceduralTactics';
 
 const meta = DRILL_METADATA['tactics.random'];
 
@@ -35,11 +35,11 @@ export function normalizeSolutionToUcis(fen: string, solution: string[]): string
   return ucis;
 }
 
-export const drill: DrillDefinition<'move'> = {
+export const drill: StepwiseDrillDefinition<'move'> = {
   ...meta,
   version: 1,
-  generate(context) {
-    const puzzle = generateProceduralTacticsPuzzle(context.random);
+  async generate(context) {
+    const puzzle = await generateLiveTacticalPuzzle({ random: context.random }) ?? generateProceduralTacticsPuzzle(context.random);
     const solutionUcis = normalizeSolutionToUcis(puzzle.fen, puzzle.solution);
 
     const isBlack = puzzle.fen.includes(' b ');
@@ -100,5 +100,22 @@ export const drill: DrillDefinition<'move'> = {
         : `Not quite. The winning move was ${expectedFirstUci}.`,
       reveal: arrows
     });
+  },
+  stepCount(privateData) {
+    return Math.max(1, privateData.solutionUcis.filter((_, idx) => idx % 2 === 0).length);
+  },
+  evaluateStep(privateData, response, stepIndex) {
+    const expected = privateData.solutionUcis.filter((_, idx) => idx % 2 === 0)[stepIndex] ?? '';
+    const userUci = response.uci.toLowerCase();
+    const correct = expected.length > 0 && userUci === expected.toLowerCase();
+    const from = expected.slice(0, 2);
+    const to = expected.slice(2, 4);
+    return {
+      score: correct ? 1 : 0,
+      correct,
+      complete: stepIndex + 1 >= Math.max(1, privateData.solutionUcis.filter((_, idx) => idx % 2 === 0).length),
+      feedback: correct ? 'Correct move.' : `Not quite. The winning move was ${expected || 'unavailable'}.`,
+      reveal: from && to ? [{ from, to, kind: 'arrow' }] : []
+    };
   }
 };

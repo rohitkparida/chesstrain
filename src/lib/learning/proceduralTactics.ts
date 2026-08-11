@@ -1,4 +1,5 @@
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js';
+import { StockfishEngine } from '$lib/chess/engine';
 
 export type TacticalMotif =
 	| 'fork'
@@ -12,10 +13,18 @@ export interface ProceduralPuzzle {
 	id: string;
 	fen: string;
 	solution: string[];
-	motif: TacticalMotif;
+	motif: TacticalMotif | 'engine-verified';
 	description: string;
 	difficulty: number;
 	tags: string[];
+}
+
+export interface LiveTacticalOptions {
+	random?: () => number;
+	maxAttempts?: number;
+	marginCp?: number;
+	moveTimeMs?: number;
+	maxGenerationMs?: number;
 }
 
 export interface TacticalMotifData {
@@ -172,4 +181,75 @@ export function generateProceduralTacticsPuzzle(random: () => number = Math.rand
 	const index = Math.floor(random() * MOTIF_GENERATORS.length);
 	const generator = MOTIF_GENERATORS[index] ?? MOTIF_GENERATORS[0];
 	return generator(random);
+}
+
+const LIVE_SEEDS = [
+	'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+	'r1bqk2r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1',
+	'r1bq1rk1/ppp2ppp/2np1n2/8/2BPP3/2N2N2/PPP2PPP/R1BQ1RK1 w - - 0 1'
+];
+
+function randomLivePosition(random: () => number): Chess {
+	const game = new Chess(LIVE_SEEDS[Math.floor(random() * LIVE_SEEDS.length)] ?? LIVE_SEEDS[0]);
+	const plies = 6 + Math.floor(random() * 12);
+	for (let ply = 0; ply < plies && !game.isGameOver(); ply += 1) {
+		const moves = game.moves({ verbose: true });
+		if (!moves.length) break;
+		const move = moves[Math.floor(random() * moves.length)] ?? moves[0];
+		game.move(move);
+	}
+	return game;
+}
+
+function engineScore(evalCp: number, mateIn: number | null): number {
+	if (mateIn !== null) return mateIn > 0 ? 100000 - mateIn : -100000 - mateIn;
+	return evalCp;
+}
+
+/** Generate a fresh position and retain it only when Stockfish finds a clear first-move gap. */
+export async function generateLiveTacticalPuzzle(options: LiveTacticalOptions = {}): Promise<ProceduralPuzzle | null> {
+	const random = options.random ?? Math.random;
+	const marginCp = options.marginCp ?? 150;
+	const attempts = options.maxAttempts ?? 6;
+	const moveTimeMs = options.moveTimeMs ?? 45;
+	const deadline = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + (options.maxGenerationMs ?? 1800);
+	const engine = new StockfishEngine();
+	try {
+		for (let attempt = 0; attempt < attempts; attempt += 1) {
+			if ((typeof performance !== 'undefined' ? performance.now() : Date.now()) >= deadline) break;
+			const game = randomLivePosition(random);
+			const rootFen = game.fen();
+			const rootColor = game.turn();
+			const legal = game.moves({ verbose: true });
+			if (legal.length < 2 || legal.length > 32) continue;
+			const scored: Array<{ uci: string; san: string; score: number }> = [];
+			for (const move of legal) {
+				if ((typeof performance !== 'undefined' ? performance.now() : Date.now()) >= deadline) break;
+				const after = new Chess(rootFen);
+				after.move(move);
+				const evaluation = await engine.getEval(after.fen(), { moveTimeMs });
+				if (evaluation.depth === 0) continue;
+				const opponentPerspective = engineScore(evaluation.evalCp, evaluation.mateIn);
+				scored.push({ uci: `${move.from}${move.to}${move.promotion ?? ''}`, san: move.san, score: -opponentPerspective });
+			}
+			if (scored.length < 2) continue;
+			scored.sort((a, b) => b.score - a.score);
+			const best = scored[0];
+			const alternate = scored[1];
+			const tactical = best.san.includes('+') || best.san.includes('#') || Boolean(legal.find((move) => `${move.from}${move.to}${move.promotion ?? ''}` === best.uci)?.captured);
+			if (!best || !alternate || !tactical || best.score - alternate.score < marginCp) continue;
+			return {
+				id: `live-tactics-${Date.now()}-${attempt}`,
+				fen: rootFen,
+				motif: 'engine-verified',
+				description: 'Live engine-verified tactical opportunity.',
+				difficulty: Math.max(1000, Math.min(2200, 1200 + Math.round((best.score - alternate.score) / 10))),
+				solution: [best.uci],
+				tags: ['live', 'engine-verified', 'tactics'],
+			};
+		}
+	} finally {
+		engine.terminate();
+	}
+	return null;
 }

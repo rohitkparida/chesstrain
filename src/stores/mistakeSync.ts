@@ -1,37 +1,42 @@
 import { writable } from 'svelte/store';
 import { MistakeSyncCoordinator, type MistakeSyncState } from '$lib/chesscom/coordinator';
-import { mistakeCacheKey, parseCachedMistakes } from '$lib/learning/gameMistakes';
+import { mistakeCacheKey, parseCachedMistakes, type GameMoveCandidate } from '$lib/learning/gameMistakes';
+import { supabase } from '$lib/account/supabaseClient';
+import { createCloudRepositories } from '$lib/cloud/repositories';
+
+export type CachedReviewMistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
 
 export interface PreWarmedMistakeSyncState extends MistakeSyncState {
-	preWarmedMistakes: any[];
+	preWarmedMistakes: CachedReviewMistake[];
 }
 
-let preWarmedCache: any[] = [];
+const preWarmedCache = new Map<string, CachedReviewMistake[]>();
 
-export function setPreWarmedMistakes(mistakes: any[]) {
-	preWarmedCache = mistakes;
+export function setPreWarmedMistakes(userId: string, mistakes: CachedReviewMistake[]) {
+	preWarmedCache.set(userId, mistakes);
 	mistakeSyncStore.update(state => ({ ...state, preWarmedMistakes: mistakes }));
 }
 
-export function preWarmMistakes(userId: string): any[] {
-	if (preWarmedCache.length > 0) return preWarmedCache;
-	if (typeof window === 'undefined' || typeof localStorage === 'undefined') return preWarmedCache;
+export function preWarmMistakes(userId: string): CachedReviewMistake[] {
+	const existing = preWarmedCache.get(userId);
+	if (existing) return existing;
+	if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
 	try {
 		const raw = localStorage.getItem(mistakeCacheKey(userId));
-		const cached = parseCachedMistakes<any>(raw, userId);
+		const cached = parseCachedMistakes<CachedReviewMistake>(raw, userId);
 		if (cached && Array.isArray(cached.mistakes) && cached.mistakes.length > 0) {
-			setPreWarmedMistakes(cached.mistakes);
+			setPreWarmedMistakes(userId, cached.mistakes);
 		}
 	} catch {
 		// ignore parsing errors
 	}
-	return preWarmedCache;
+	return preWarmedCache.get(userId) ?? [];
 }
 
-export function getPreWarmedMistakes(userId?: string): any[] {
-	if (preWarmedCache.length > 0) return preWarmedCache;
+export function getPreWarmedMistakes(userId?: string): CachedReviewMistake[] {
+	if (userId && preWarmedCache.has(userId)) return preWarmedCache.get(userId) ?? [];
 	if (userId) return preWarmMistakes(userId);
-	return preWarmedCache;
+	return [];
 }
 
 export const mistakeSyncStore = writable<PreWarmedMistakeSyncState>({
@@ -55,10 +60,11 @@ export function startMistakeSync(userId: string, username: string, force = false
 	const key = `${userId}:${normalized.toLocaleLowerCase()}`;
 	let coordinator = coordinators.get(key);
 	if (!coordinator) {
-		coordinator = new MistakeSyncCoordinator(userId, normalized);
+		const cloud = supabase && userId !== 'guest' ? createCloudRepositories(supabase) : undefined;
+		coordinator = new MistakeSyncCoordinator(userId, normalized, { cloud });
 		coordinators.set(key, coordinator);
 		coordinator.subscribe(state => {
-			mistakeSyncStore.set({ ...state, preWarmedMistakes: preWarmedCache });
+			mistakeSyncStore.set({ ...state, preWarmedMistakes: preWarmedCache.get(userId) ?? [] });
 		});
 	}
 	void coordinator.run(force).catch(() => {});

@@ -83,6 +83,15 @@ export interface DrillAssessment {
   reveal?: JsonValue;
 }
 
+/** Result for one committed response in a multi-step drill. */
+export interface DrillStepAssessment {
+  score: number;
+  correct: boolean;
+  complete: boolean;
+  feedback: string;
+  reveal?: JsonValue;
+}
+
 export interface DrillContext {
   userId: string;
   difficulty: number;
@@ -114,6 +123,21 @@ export interface DrillDefinition<K extends keyof InteractionContracts = keyof In
     response: InteractionContracts[K]['response'] | null,
     assistance?: AssistanceLevel
   ): DrillAssessment | Promise<DrillAssessment>;
+}
+
+/**
+ * Optional contract for drills that collect a line (or other ordered sequence)
+ * one response at a time. The normal DrillDefinition lifecycle remains intact;
+ * the runner only calls evaluateStep when this method is present.
+ */
+export interface StepwiseDrillDefinition<K extends keyof InteractionContracts = keyof InteractionContracts>
+  extends DrillDefinition<K> {
+  stepCount: (privateData: InteractionContracts[K]['private']) => number;
+  evaluateStep(
+    privateData: InteractionContracts[K]['private'],
+    response: InteractionContracts[K]['response'],
+    stepIndex: number
+  ): DrillStepAssessment | Promise<DrillStepAssessment>;
 }
 
 export interface LazyDrillEntry<K extends keyof InteractionContracts = keyof InteractionContracts> {
@@ -156,4 +180,3 @@ export function extractKeywordsFromPrompt(prompt: string): string[] {
 
   return Array.from(new Set(keywords));
 }
-

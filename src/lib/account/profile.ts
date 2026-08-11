@@ -27,12 +27,12 @@ export function defaultProfileFor(username: string): UserProfile {
 
 export const defaultProfile: UserProfile = defaultProfileFor(LOCAL_ACCOUNT_USERNAME);
 
-export function sanitizeProfile(value: unknown): UserProfile {
-  if (!isRecord(value)) return { ...defaultProfile };
+export function sanitizeProfile(value: unknown, fallback: UserProfile = defaultProfile): UserProfile {
+  if (!isRecord(value)) return { ...fallback };
 
   const theme = value.theme === 'light' || value.theme === 'dark' || value.theme === 'system'
     ? value.theme
-    : defaultProfile.theme;
+    : fallback.theme;
 
   return {
     displayName: typeof value.displayName === 'string' ? value.displayName.trim().slice(0, 50) : '',
@@ -63,7 +63,7 @@ export const localProfileRepository: ProfileRepository = {
     try {
       const raw = readScopedStorageItem(PROFILE_STORAGE_KEY, username);
       if (!raw) return fallback;
-      const profile = sanitizeProfile(JSON.parse(raw));
+      const profile = sanitizeProfile(JSON.parse(raw), fallback);
       if (!profile.displayName && !profile.chessComUsername) {
         return { ...fallback, theme: profile.theme };
       }

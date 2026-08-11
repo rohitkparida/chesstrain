@@ -1,7 +1,8 @@
 import { StockfishEngine, StockfishCancellationError, StockfishEngineTerminatedError } from '$lib/chess/engine';
 import { candidatesForGame, exerciseFromAnalysis, quickAnalyzeCandidate, selectTopGameMistakes, verifyCandidate, type AnalyzedMove } from '$lib/learning/mistakeAnalysis';
 import { ChessComApiError, createChessComClient, fetchLatestEligibleGames, fetchNewEligibleGames } from './client';
-import { createIndexedDbMistakeRepository } from './repository';
+import { createCloudBackedMistakeRepository, createIndexedDbMistakeRepository } from './repository';
+import type { createCloudRepositories } from '$lib/cloud/repositories';
 import type { ChessComClient } from './types';
 import type { MistakeAnalysisJob, MistakeRepository, PersonalMistakeExercise } from './types';
 
@@ -31,10 +32,10 @@ export class MistakeSyncCoordinator {
 	constructor(
 		private readonly userId: string,
 		private readonly username: string,
-		options: { client?: ChessComClient; repository?: MistakeRepository; engine?: StockfishEngine } = {}
+		options: { client?: ChessComClient; repository?: MistakeRepository; engine?: StockfishEngine; cloud?: ReturnType<typeof createCloudRepositories> } = {}
 	) {
 		this.client = options.client ?? createChessComClient();
-		this.repository = options.repository ?? createIndexedDbMistakeRepository();
+		this.repository = options.repository ?? (options.cloud ? createCloudBackedMistakeRepository(userId, options.cloud) : createIndexedDbMistakeRepository());
 		this.engine = options.engine ?? new StockfishEngine();
 	}
 

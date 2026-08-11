@@ -1,4 +1,4 @@
-import type { DecisionExercise } from '../learning/trainingTypes';
+import type { DecisionExercise, ExerciseAnswerMode } from '../learning/trainingTypes';
 
 export interface DecisionChoice {
 	id: string;
@@ -10,6 +10,7 @@ export interface DecisionCandidate extends DecisionChoice {
 }
 
 export interface DecisionScenario extends DecisionExercise {
+	answerMode: Extract<ExerciseAnswerMode, 'equivalent-moves'>;
 	opponentMove: string;
 	prompt: string;
 	threatOptions: readonly DecisionChoice[];
@@ -50,6 +51,7 @@ const threats: readonly DecisionChoice[] = [
 export const DECISION_SCENARIOS: readonly DecisionScenario[] = [
 	{
 		id: 'decision-najdorf-break', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		answerMode: 'equivalent-moves',
 		title: 'Critical Central Decision', fen: sharpNajdorfFen, bestMove: 'e1g1',
 		opponentMove: '...c5', prompt: 'Black challenges the centre. Identify the critical threat and calculate candidate responses.',
 		threatOptions: threats, expectedThreat: 'central-break',
@@ -67,6 +69,7 @@ export const DECISION_SCENARIOS: readonly DecisionScenario[] = [
 	},
 	{
 		id: 'decision-pinned-piece', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		answerMode: 'equivalent-moves',
 		title: 'Respond to Pinned Piece Pressure', fen: pinnedThreatFen, bestMove: 'd1b3',
 		opponentMove: '...Bb4', prompt: 'Black pins your c3 knight to the king. Find the best candidate moves.',
 		threatOptions: threats, expectedThreat: 'pinned-defender',
@@ -84,6 +87,7 @@ export const DECISION_SCENARIOS: readonly DecisionScenario[] = [
 	},
 	{
 		id: 'decision-central-lever', module: 'decision', type: 'decision', estimatedSeconds: 90,
+		answerMode: 'equivalent-moves',
 		title: 'Evaluate Central Leverage', fen: centralBreakFen, bestMove: 'b2b3',
 		opponentMove: '...d5', prompt: 'The position has reached maximum central tension. Calculate your key candidate moves.',
 		threatOptions: threats, expectedThreat: 'central-break',

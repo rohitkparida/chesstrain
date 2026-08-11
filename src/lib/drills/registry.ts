@@ -33,6 +33,10 @@ export const DRILLS = {
   'tactics.random': {
     ...DRILL_METADATA['tactics.random'],
     load: () => import('./tactics/randomTactics').then((m) => m.drill)
+  },
+  'tactics.forced-mate': {
+    ...DRILL_METADATA['tactics.forced-mate'],
+    load: () => import('./tactics/forcedMate').then((m) => m.drill)
   }
 } as const satisfies Record<DrillId, LazyDrillEntry>;
 

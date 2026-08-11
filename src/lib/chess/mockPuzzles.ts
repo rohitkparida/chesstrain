@@ -5,6 +5,8 @@ export interface PuzzleData {
   elo: number;
   tags: string[];
   description?: string;
+  /** Tactics are intentionally single-answer drills; alternatives are not silently accepted. */
+  answerMode?: 'forced-line';
 }
 
 export const mockPuzzles: PuzzleData[] = [

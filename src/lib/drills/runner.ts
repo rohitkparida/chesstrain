@@ -3,7 +3,8 @@ import type {
   GeneratedDrill,
   DrillAssessment,
   InteractionContracts,
-  AssistanceLevel
+  AssistanceLevel,
+  StepwiseDrillDefinition
 } from './types';
 
 export type RunnerStatus = 'loading' | 'active' | 'evaluating' | 'feedback';
@@ -18,6 +19,8 @@ export interface RunnerState<K extends keyof InteractionContracts = keyof Intera
   assessment: DrillAssessment | null;
   assistance: AssistanceLevel;
   error: string | null;
+  stepIndex: number;
+  stepResponses: InteractionContracts[K]['response'][];
 }
 
 export type RunnerListener<K extends keyof InteractionContracts = keyof InteractionContracts> = (
@@ -58,7 +61,9 @@ export class DrillRunnerMachine<K extends keyof InteractionContracts = keyof Int
       response: null,
       assessment: null,
       assistance: 'none',
-      error: null
+      error: null,
+      stepIndex: 0,
+      stepResponses: []
     };
   }
 
@@ -102,7 +107,9 @@ export class DrillRunnerMachine<K extends keyof InteractionContracts = keyof Int
       response: null,
       assessment: null,
       assistance: 'none',
-      error: null
+      error: null,
+      stepIndex: 0,
+      stepResponses: []
     };
     this.notify();
   }
@@ -157,6 +164,47 @@ export class DrillRunnerMachine<K extends keyof InteractionContracts = keyof Int
     }
   }
 
+  /** Submit one response in a stepwise drill. Intermediate correct steps keep
+   * the drill active; the final step enters feedback and records once. */
+  public async submitStep(response: InteractionContracts[K]['response']): Promise<DrillAssessment | null> {
+    const currentToken = this.runToken;
+    const def = this.state.definition;
+    const inst = this.state.instance;
+    if (this.state.status !== 'active' || !def || !inst || !isStepwiseDefinition(def)) return null;
+
+    const elapsed = this.state.startTimeMs ? Date.now() - this.state.startTimeMs : 0;
+    const stepIndex = this.state.stepIndex;
+    const responses = [...this.state.stepResponses, response];
+    this.state = { ...this.state, status: 'evaluating', response, stepResponses: responses, elapsedMs: elapsed };
+    this.notify();
+
+    try {
+      const result = await def.evaluateStep(inst.privateData, response, stepIndex);
+      if (this.runToken !== currentToken) return null;
+      const assessment: DrillAssessment = {
+        score: result.score,
+        correct: result.correct,
+        feedback: result.feedback,
+        reveal: result.reveal
+      };
+      const complete = result.complete || stepIndex + 1 >= def.stepCount(inst.privateData);
+      if (!result.correct || complete) {
+        this.state = { ...this.state, status: 'feedback', assessment, stepIndex: stepIndex + 1 };
+        this.recordAttemptOnce(assessment, 'none');
+      } else {
+        this.state = { ...this.state, status: 'active', assessment: null, stepIndex: stepIndex + 1, error: null };
+      }
+      this.notify();
+      return assessment;
+    } catch (err: unknown) {
+      if (this.runToken !== currentToken) return null;
+      const message = err instanceof Error ? err.message : 'Evaluation failed';
+      this.state = { ...this.state, status: 'active', error: message };
+      this.notify();
+      return null;
+    }
+  }
+
   public skip() {
     this.invalidateRun();
     this.state = {
@@ -164,7 +212,9 @@ export class DrillRunnerMachine<K extends keyof InteractionContracts = keyof Int
       status: 'loading',
       instance: null,
       response: null,
-      assessment: null
+      assessment: null,
+      stepIndex: 0,
+      stepResponses: []
     };
     this.notify();
   }
@@ -237,4 +287,11 @@ export class DrillRunnerMachine<K extends keyof InteractionContracts = keyof Int
       });
     }
   }
+}
+
+function isStepwiseDefinition<K extends keyof InteractionContracts>(
+  definition: DrillDefinition<K>
+): definition is StepwiseDrillDefinition<K> {
+  return 'evaluateStep' in definition && typeof definition.evaluateStep === 'function' &&
+    'stepCount' in definition && typeof definition.stepCount === 'function';
 }

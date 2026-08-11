@@ -5,7 +5,7 @@ import {
 	type DailyPlan,
 	type DailyPlanItem,
 	type TrainingAttempt,
-	type TrainingExercise,
+	type DailyPlanCandidate,
 	type TrainingModuleId,
 	type ModuleProgress
 } from './trainingTypes';
@@ -56,7 +56,7 @@ export const DAILY_TARGET_MINUTES = 10;
 
 export interface DailyPlanInput {
 	userId: string;
-	exercises: readonly TrainingExercise[];
+	candidates: readonly DailyPlanCandidate[];
 	attempts?: readonly TrainingAttempt[];
 	progress?: Partial<Record<TrainingModuleId, ModuleProgress>>;
 	srs?: Readonly<Record<string, Pick<SRSEntry, 'nextScheduledDate'>>>;
@@ -74,7 +74,7 @@ export function localDateKey(timestamp: number): string {
 	return `${year}-${month}-${day}`;
 }
 
-function estimatedSeconds(exercise: TrainingExercise): number {
+function estimatedSeconds(exercise: DailyPlanCandidate): number {
 	return Number.isFinite(exercise.estimatedSeconds) && exercise.estimatedSeconds > 0
 		? Math.round(exercise.estimatedSeconds)
 		: 60;
@@ -93,7 +93,7 @@ function weaknessByModule(
 	return recent.length === 0 ? 0 : 1 - recent.reduce((sum, attempt) => sum + attempt.score, 0) / recent.length;
 }
 
-function stableExerciseOrder(a: TrainingExercise, b: TrainingExercise): number {
+function stableExerciseOrder(a: DailyPlanCandidate, b: DailyPlanCandidate): number {
 	return a.module.localeCompare(b.module) || a.id.localeCompare(b.id);
 }
 
@@ -146,13 +146,13 @@ export function generateDailyPlan(input: DailyPlanInput): DailyPlan {
 			.filter(([, moduleProgress]) => moduleProgress?.unlocked)
 			.map(([module]) => module)
 	);
-	const usableExercises = input.exercises
+	const usableExercises = input.candidates
 		.filter((exercise) => unlocked.has(exercise.module))
 		.slice()
 		.sort(stableExerciseOrder);
-	const due: TrainingExercise[] = [];
-	const weak: TrainingExercise[] = [];
-	const fresh: TrainingExercise[] = [];
+	const due: DailyPlanCandidate[] = [];
+	const weak: DailyPlanCandidate[] = [];
+	const fresh: DailyPlanCandidate[] = [];
 
 	for (const exercise of usableExercises) {
 		const last = latestAttempt(attempts, exercise.module, exercise.id);
@@ -169,20 +169,20 @@ export function generateDailyPlan(input: DailyPlanInput): DailyPlan {
 		}
 	}
 
-	const order = (a: TrainingExercise, b: TrainingExercise): number =>
+	const order = (a: DailyPlanCandidate, b: DailyPlanCandidate): number =>
 		weaknessByModule(attempts, b.module, progress) - weaknessByModule(attempts, a.module, progress)
 		|| stableExerciseOrder(a, b);
 	weak.sort(order);
 	fresh.sort(order);
 
-	const candidates: Array<{ exercise: TrainingExercise; reason: DailyPlanItem['reason'] }> = [
+	const prioritized: Array<{ exercise: DailyPlanCandidate; reason: DailyPlanItem['reason'] }> = [
 		...due.map((exercise) => ({ exercise, reason: 'due-review' as const })),
 		...weak.map((exercise) => ({ exercise, reason: 'weakest-unlocked' as const })),
 		...fresh.map((exercise) => ({ exercise, reason: 'new' as const }))
 	];
 	const items: DailyPlanItem[] = [];
 	let elapsed = 0;
-	for (const [index, candidate] of candidates.entries()) {
+	for (const [index, candidate] of prioritized.entries()) {
 		const seconds = estimatedSeconds(candidate.exercise);
 		if (items.length > 0 && elapsed + seconds > targetSeconds) continue;
 		items.push({

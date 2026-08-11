@@ -41,12 +41,14 @@
 		
 		if (document.activeElement !== inputEl) {
 			if (/^[a-h1-8]$/i.test(e.key) && e.key.length === 1) {
+				e.preventDefault();
 				inputValue += e.key;
 				if (inputEl) inputEl.focus();
 				if (/^[a-h][1-8]$/i.test(inputValue.trim())) {
 					handleSubmit();
 				}
 			} else if (e.key === 'Backspace') {
+				e.preventDefault();
 				inputValue = inputValue.slice(0, -1);
 				if (inputEl) inputEl.focus();
 			}

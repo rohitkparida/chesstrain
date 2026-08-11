@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legalCueAnnotations, resultForTerminalState, scoreEndgameResult, scoreResultPreservation, terminalStateForFen } from './endgameContent';
+import { ENDGAME_SCENARIOS, legalCueAnnotations, resultForTerminalState, scoreEndgameResult, scoreResultPreservation, terminalStateForFen } from './endgameContent';
 
 describe('endgame content contract', () => {
 	it('detects checkmate, stalemate, and draw outcomes', () => {
@@ -18,6 +18,7 @@ describe('endgame content contract', () => {
 	});
 
 	it('scores theoretical result preservation instead of exact move identity', () => {
+		expect(ENDGAME_SCENARIOS.every((scenario) => scenario.answerMode === 'equivalent-moves')).toBe(true);
 		expect(scoreResultPreservation('win', 'win')).toBe(1);
 		expect(scoreResultPreservation('win', 'draw')).toBe(0);
 		expect(scoreEndgameResult('draw', 'draw')).toMatchObject({ preserved: true, score: 1 });

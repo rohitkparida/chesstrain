@@ -1,9 +1,8 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import DailyPlanCard from '../components/DailyPlanCard.svelte';
-  import { modulePresentation } from '../components/trainingCatalog';
+  import { DAILY_PLAN_SLOTS, modulePresentation } from '../components/trainingCatalog';
   import { completedDailyPlanSlots, dailyPlanSlotKey, generateDailyPlan, localDateKey, type DailyPlan, type TrainingAttempt } from '$lib/learning/training';
-  import { validatedExercises } from '$lib/learning/moduleExercises';
   import { recentFingerprints } from '$lib/learning/generator';
   import { sessionStore } from '../stores/session';
   import { appPath } from '$lib/paths';
@@ -21,8 +20,6 @@
   let plan = $state<DailyPlan | null>(null);
   let attempts = $state<TrainingAttempt[]>([]);
 
-  const exercises = validatedExercises();
-
   const unsubscribe = sessionStore.subscribe((state) => {
     attempts = state.trainingAttempts ?? [];
     const now = Date.now();
@@ -37,7 +34,7 @@
 
     const generated = generateDailyPlan({
       userId,
-      exercises,
+      candidates: DAILY_PLAN_SLOTS,
       attempts,
       progress: state.moduleProgress,
       srs: state.srs,

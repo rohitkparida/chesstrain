@@ -39,6 +39,19 @@ describe('board grip game', () => {
     expect(newGiveUpBtn).toBeInTheDocument();
   }, 15000);
 
+  it('continues a name-square round from Enter after a keyboard answer', async () => {
+    render(Squares, { fixedKind: 'name-square' });
+    const input = await screen.findByPlaceholderText(/type coordinate/i, {}, { timeout: 10000 });
+    await fireEvent.input(input, { target: { value: 'a1' } });
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i }, { timeout: 10000 });
+    expect(continueBtn).toBeInTheDocument();
+    await fireEvent.keyDown(window, { key: 'Enter' });
+
+    const newGiveUpBtn = await screen.findByText(/Give up & show answer/i, {}, { timeout: 10000 });
+    expect(newGiveUpBtn).toBeInTheDocument();
+  }, 15000);
+
   it('calculates strictly legal king moves for safeKingSquaresFromFen', () => {
     // Standard starting position: white king on e1 is blocked by own pawns/pieces
     const fenStart = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';

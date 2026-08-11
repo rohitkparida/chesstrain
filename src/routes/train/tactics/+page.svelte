@@ -3,7 +3,7 @@
   import { Chess } from 'chess.js';
   import type { TacticsPageData } from './+page';
   import ChessBoard from '../../../components/ChessBoard.svelte';
-  import InstructionBanner from '../../../components/InstructionBanner.svelte';
+  import TrainingModuleShell from '../../../components/TrainingModuleShell.svelte';
   import ObjectiveMetrics from '../../../components/ObjectiveMetrics.svelte';
   import TacticsFeedback from './TacticsFeedback.svelte';
   import TacticsVisualFeedback from './TacticsVisualFeedback.svelte';
@@ -20,6 +20,7 @@
     nextPuzzleState,
     puzzleTag
   } from '$lib/learning/tacticsLifecycle';
+  import { createLatestRequest } from '$lib/async/latestRequest';
 
   let { data }: { data: TacticsPageData } = $props();
   const puzzles = $derived(data.puzzles?.length > 0 ? data.puzzles : mockPuzzles);
@@ -36,15 +37,13 @@
   const solutionAnnotations = $derived<BoardAnnotation[]>(showSolution
     ? solutionUcis.map((move) => ({ from: move.slice(0, 2), to: move.slice(2, 4), kind: 'arrow' as const }))
     : []);
-  let skipConfirm = $state(false);
   let puzzleNum = $state(1);
   let preMoveEval = $state<EngineEval | null>(null);
   let advancing = $state(false);
   let attemptStartedAt = Date.now();
-  let skipTimer: ReturnType<typeof setTimeout> | null = null;
   let reflectionTimer: ReturnType<typeof setInterval> | null = null;
-  let attemptGeneration = 0;
-  let evalGeneration = 0;
+  const attemptRequests = createLatestRequest();
+  const evaluationRequests = createLatestRequest();
 
   const unsubscribe = sessionStore.subscribe((s) => {
     totalSolved = s.totalSolved;
@@ -54,7 +53,6 @@
 
   onDestroy(() => {
     unsubscribe();
-    if (skipTimer) clearTimeout(skipTimer);
     if (reflectionTimer) clearInterval(reflectionTimer);
   });
 
@@ -77,10 +75,12 @@
   function buildSolutionUcis(puzzle: PuzzleData): string[] {
     try {
       const game = new Chess(puzzle.fen);
-      return puzzle.solution.flatMap((notation) => {
+      const moves = puzzle.solution.map((notation) => {
         const move = game.move(notation);
-        return move ? [`${move.from}${move.to}${move.promotion ?? ''}`] : [];
+        if (!move) throw new Error('Invalid solution line');
+        return `${move.from}${move.to}${move.promotion ?? ''}`;
       });
+      return moves;
     } catch {
       return [];
     }
@@ -101,7 +101,7 @@
     const userMove = attemptedUci;
     boardFen = applied.afterFen;
 
-    const generation = ++attemptGeneration;
+    const requestId = attemptRequests.begin();
 
     if (attemptedUci !== expectedUci) {
       commitAttempt(false, userMove, applied.afterFen);
@@ -123,14 +123,14 @@
     }
 
     if (lineIndex >= activePuzzle.solution.length) {
-      commitAttempt(true, userMove, boardFen, generation);
+      commitAttempt(true, userMove, boardFen, requestId);
       return;
     }
 
     attemptState.inputNotice = 'Correct. The opponent reply is automatic. Find the next move.';
   }
 
-  function commitAttempt(correct: boolean, userMove: string, afterFen: string, generation = ++attemptGeneration) {
+  function commitAttempt(correct: boolean, userMove: string, afterFen: string, requestId = attemptRequests.begin()) {
     if (reflectionTimer) clearInterval(reflectionTimer);
     attemptState = attemptResultState(correct, Date.now() - attemptStartedAt, userMove, afterFen);
     attemptState.coachLoading = false;
@@ -152,26 +152,26 @@
       attemptState.coachLoading = true;
       coach.explain({ preMoveEval, userMove, newFen: afterFen, correct: true })
         .then((result) => {
-          if (generation === attemptGeneration) {
+          if (attemptRequests.isCurrent(requestId)) {
             attemptState.coachText = result.explanation;
             attemptState.cpLoss = result.cpLoss;
           }
         })
         .catch(() => {
-          if (generation === attemptGeneration) attemptState.coachText = 'Good move. The full line is complete.';
+          if (attemptRequests.isCurrent(requestId)) attemptState.coachText = 'Good move. The full line is complete.';
         })
         .finally(() => {
-          if (generation === attemptGeneration) attemptState.coachLoading = false;
+          if (attemptRequests.isCurrent(requestId)) attemptState.coachLoading = false;
         });
     }
   }
 
   function prepareEvaluation(puzzle: PuzzleData) {
-    const generation = ++evalGeneration;
+    const requestId = evaluationRequests.begin();
     preMoveEval = null;
     coach.getPreMoveEval(puzzle.fen)
       .then((result) => {
-        if (generation === evalGeneration && result.bestMove) preMoveEval = result;
+        if (evaluationRequests.isCurrent(requestId) && result.bestMove) preMoveEval = result;
       })
       .catch(() => {});
   }
@@ -180,8 +180,7 @@
     if (advancing) return;
     advancing = true;
     if (reflectionTimer) clearInterval(reflectionTimer);
-    attemptGeneration++;
-    if (skipTimer) clearTimeout(skipTimer);
+    attemptRequests.cancel();
     puzzleNum++;
     const selected = selectNextPuzzle('tactics', puzzleTag(activePuzzle));
     const next = selected as PuzzleData | null;
@@ -194,21 +193,8 @@
       prepareEvaluation(activePuzzle);
     }
     attemptState = nextPuzzleState();
-    skipConfirm = false;
     attemptStartedAt = Date.now();
     advancing = false;
-  }
-
-  function requestSkip() {
-    if (attemptState.attempted || advancing) return;
-    skipConfirm = true;
-    if (skipTimer) clearTimeout(skipTimer);
-    skipTimer = setTimeout(() => (skipConfirm = false), 3000);
-  }
-
-  function skipPuzzle() {
-    if (attemptState.attempted || advancing) return;
-    nextPuzzle();
   }
 
   function explainInvalidMove() {
@@ -238,14 +224,17 @@
   }
 </script>
 
+<TrainingModuleShell
+  title="Tactics"
+  task="Find the best move for {activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White'}. Select a piece, then a square."
+  taskKeywords={['best move', activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White']}
+  onSkip={attemptState.attempted ? undefined : nextPuzzle}
+  onContinue={nextPuzzle}
+  continueVisible={attemptState.attempted && !attemptState.coachLoading}
+  continueLabel="Continue"
+>
 <div class="tactics-layout">
   <div class="board-col">
-    <InstructionBanner
-      title="Find the best move for {activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White'}."
-      keywords={['best move', activePuzzle?.fen?.includes(' b ') ? 'Black' : 'White']}
-      hint="Select a piece, then a square."
-    />
-
     {#if activePuzzle}
       <div class="board-wrap">
         <ChessBoard
@@ -286,21 +275,7 @@
       />
     {/if}
 
-    <div class="actions">
-      {#if attemptState.attempted}
-        <button class="btn-primary" onclick={nextPuzzle} disabled={advancing}>
-          {advancing ? 'Loading next...' : 'Continue'}
-        </button>
-      {:else if skipConfirm}
-        <div class="confirm-row">
-          <span>Skip this puzzle?</span>
-          <button class="confirm-yes" onclick={skipPuzzle}>Yes, skip</button>
-          <button class="confirm-no" onclick={() => (skipConfirm = false)}>Cancel</button>
-        </div>
-      {:else}
-        <button class="btn-outline" onclick={requestSkip}>Skip</button>
-      {/if}
-    </div>
+    {#if advancing}<div class="actions"><span class="loading-next">Loading next...</span></div>{/if}
 
     {#if attemptState.attempted && attemptState.attemptTimeMs !== null}
       <ObjectiveMetrics
@@ -336,6 +311,7 @@
     </div>
   {/if}
 </div>
+</TrainingModuleShell>
 
 <style>
   .tactics-layout {
@@ -343,6 +319,8 @@
     grid-template-columns: 1fr;
     gap: 1rem;
     align-items: start;
+    width: min(100%, var(--content-width));
+    margin: 0 auto;
   }
   @media (max-width: 700px) {
     .tactics-layout {
@@ -365,61 +343,7 @@
     display: flex;
     gap: 0.75rem;
   }
-  .btn-primary {
-    padding: 0.6rem 1.2rem;
-    border-radius: 6px;
-    border: none;
-    background: var(--accent);
-    color: var(--bg);
-    cursor: pointer;
-    font-weight: 700;
-  }
-  .btn-primary:disabled {
-    opacity: 0.55;
-    cursor: wait;
-  }
-  .btn-outline {
-    padding: 0.6rem 1.2rem;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.88rem;
-    background: var(--surface-1);
-    color: var(--text-4);
-    border: 1px solid var(--border);
-    transition:
-      color 0.15s,
-      border-color 0.15s;
-  }
-  .btn-outline:hover {
-    color: var(--text-2);
-    border-color: var(--border-sub);
-  }
-
-  .confirm-row {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.88rem;
-    color: var(--text-4);
-  }
-  .confirm-yes {
-    background: var(--error-dim);
-    color: var(--error);
-    border: 1px solid rgba(220, 38, 38, 0.3);
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .confirm-no {
-    background: var(--surface-1);
-    color: var(--text-4);
-    border: 1px solid var(--border);
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    cursor: pointer;
-  }
+  .loading-next { color: var(--text-4); font-size: 0.85rem; }
 
   .info-col {
     display: grid;

@@ -6,6 +6,7 @@ import { DECISION_SCENARIOS, type DecisionScenario } from '../modules/decisionCo
 import { ENDGAME_SCENARIOS, type EndgameScenario } from '../modules/endgameContent';
 import type { TrainingExercise, TrainingModuleId } from './trainingTypes';
 import { exerciseFingerprint } from './generator';
+import { isLegalCalculationLine } from './calculation';
 
 export type ValidatedExercise = TrainingExercise & { positionFingerprint: string; source: NonNullable<TrainingExercise['source']>; verification: NonNullable<TrainingExercise['verification']> };
 
@@ -42,7 +43,7 @@ function validateList<T>(
 }
 
 function calculationExercises(): readonly ValidatedExercise[] {
-	return validateList(CALCULATION_EXERCISES, (exercise: CalculationExerciseContent) => ({
+	return validateList(CALCULATION_EXERCISES.filter((exercise) => isLegalCalculationLine(exercise.fen, exercise.solution)), (exercise: CalculationExerciseContent) => ({
 		exercise,
 		prompt: exercise.concept,
 		conceptIds: exercise.tags

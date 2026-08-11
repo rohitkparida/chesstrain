@@ -1,11 +1,12 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { createAttemptOutcome, type AttemptResult } from '$lib/learning/attempts';
 import { chooseNextPuzzle } from '$lib/learning/queue';
-import { sessionRepository } from '$lib/session/sessionRepository';
 import { clearSession, readSession, writeSession } from '$lib/session/sessionPersistence';
 export { sanitizeStoredSession } from '$lib/session/sessionPersistence';
 import type { SRSEntry } from '$lib/srs/sm2';
 import { calculateSRS } from '$lib/srs/sm2';
+import { supabase, supabaseConfigured } from '$lib/account/supabaseClient';
+import { createCloudRepositories, type TrainingAttemptRecord } from '$lib/cloud/repositories';
 import { GUEST_USERNAME, LOCAL_ACCOUNT_USERNAME } from '$lib/account/localAuth';
 import {
 	createProgressMap,
@@ -76,6 +77,84 @@ const guestSessionDefaults: SessionState = {
 };
 
 let sessionOwner = LOCAL_ACCOUNT_USERNAME;
+let cloudUserId: string | null = null;
+const cloudEnabled = supabaseConfigured && import.meta.env.MODE !== 'test';
+const cloudRepositories = supabase ? createCloudRepositories(supabase) : null;
+
+export type PersistenceSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
+/** Observable status for optional UI/diagnostics; local progress is always authoritative. */
+export const persistenceSyncStatus = writable<PersistenceSyncStatus>('local');
+let pendingCloudWrites = 0;
+let cloudWriteFailed = false;
+function beginCloudWrite() { pendingCloudWrites++; persistenceSyncStatus.set('syncing'); }
+function finishCloudWrite(ok: boolean) {
+	pendingCloudWrites = Math.max(0, pendingCloudWrites - 1);
+	if (!ok) cloudWriteFailed = true;
+	if (pendingCloudWrites === 0) {
+		persistenceSyncStatus.set(cloudWriteFailed ? 'error' : 'synced');
+		cloudWriteFailed = false;
+	}
+}
+
+const CLOUD_MODULES = new Set<TrainingModuleId>(['board-grip', 'tactics', 'openings', 'calculation', 'positional', 'decision', 'endgame', 'mistakes']);
+
+/** Replace the local cache with the authenticated user's cloud learning data. */
+export async function hydrateCloudSession(userId: string, username: string): Promise<void> {
+	if (!cloudEnabled || !cloudRepositories || username === GUEST_USERNAME) return;
+	cloudUserId = userId;
+	sessionOwner = username;
+	persistenceSyncStatus.set('syncing');
+	let ratings: Awaited<ReturnType<typeof cloudRepositories.ratings.list>>;
+	let cards: Awaited<ReturnType<typeof cloudRepositories.srs.list>>;
+	let attempts: Awaited<ReturnType<typeof cloudRepositories.attempts.list>>;
+	try {
+		[ratings, cards, attempts] = await Promise.all([
+			cloudRepositories.ratings.list(userId), cloudRepositories.srs.list(userId), cloudRepositories.attempts.list(userId)
+		]);
+	} catch {
+		// Keep the local-first session intact when the network is unavailable.
+		persistenceSyncStatus.set('error');
+		return;
+	}
+	const local = get(sessionStore);
+	const ratingMap: Record<string, number> = { ...defaultSession.ratings, ...local.ratings };
+	for (const rating of ratings) ratingMap[`${rating.skill}:${rating.subtype}`] = rating.elo;
+	const srsMap: Record<string, SRSEntry> = { ...local.srs };
+	for (const card of cards) srsMap[card.exerciseId] = { puzzleId: card.exerciseId, repetition: card.repetition, interval: card.intervalDays, easeFactor: card.easeFactor, nextScheduledDate: card.nextReviewAt.getTime() };
+	const cloudAttempts = attempts.filter((a) => CLOUD_MODULES.has(a.module as TrainingModuleId)).map(cloudAttemptToTrainingAttempt);
+	const attemptsById = new Map([...local.trainingAttempts, ...cloudAttempts].map((attempt) => [attempt.id, attempt]));
+	const trainingAttempts = [...attemptsById.values()].sort((a, b) => a.completedAt - b.completedAt).slice(-500);
+	sessionStore.set({ ...local, userId: username, ratings: ratingMap, srs: srsMap, trainingAttempts, totalSolved: trainingAttempts.filter((a) => a.correct).length, streak: calculateStreak(trainingAttempts), moduleProgress: createProgressMap(trainingAttempts, false), loadedPuzzles: [] });
+	persistenceSyncStatus.set('synced');
+}
+
+function cloudAttemptToTrainingAttempt(a: TrainingAttemptRecord): TrainingAttempt {
+	return { id: a.id, userId: a.userId, exerciseId: a.exerciseId, module: a.module as TrainingModuleId, score: a.score, assistance: (a.assistance || 'none') as TrainingAttempt['assistance'], startedAt: a.startedAt.getTime(), completedAt: a.completedAt.getTime(), durationMs: a.durationMs, correct: a.score >= 0.9, result: (a.result as TrainingAttempt['result']) ?? undefined, tags: a.tags, source: (a.source as TrainingAttempt['source']) ?? undefined };
+}
+
+function calculateStreak(attempts: TrainingAttempt[]): number {
+	let streak = 0;
+	for (const attempt of [...attempts].sort((a, b) => b.completedAt - a.completedAt)) { if (!attempt.correct) break; streak++; }
+	return streak;
+}
+
+function persistCloudAttempt(attempt: TrainingAttempt): void {
+	if (!cloudEnabled || !cloudRepositories || !cloudUserId || attempt.userId !== sessionOwner) return;
+	beginCloudWrite();
+	void cloudRepositories.attempts.insert({ id: attempt.id, userId: cloudUserId, exerciseId: attempt.exerciseId, module: attempt.module, score: attempt.score, assistance: attempt.assistance, durationMs: attempt.durationMs, startedAt: new Date(attempt.startedAt), completedAt: new Date(attempt.completedAt), result: attempt.result ?? null, source: attempt.source ?? null, tags: [...(attempt.tags ?? [])] }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
+}
+
+function persistCloudRating(skill: string, subtype: string, elo: number): void {
+	if (!cloudEnabled || !cloudRepositories || !cloudUserId) return;
+	beginCloudWrite();
+	void cloudRepositories.ratings.upsert({ userId: cloudUserId, skill, subtype, elo, confidence: 0.5 }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
+}
+
+function persistCloudSrs(exerciseId: string, value: SRSEntry): void {
+	if (!cloudEnabled || !cloudRepositories || !cloudUserId) return;
+	beginCloudWrite();
+	void cloudRepositories.srs.upsert({ userId: cloudUserId, exerciseId, repetition: value.repetition, intervalDays: value.interval, easeFactor: value.easeFactor, nextReviewAt: new Date(value.nextScheduledDate), lapses: 0, updatedAt: new Date() }).then(() => finishCloudWrite(true), () => finishCloudWrite(false));
+}
 
 function loadFromStorage(username = sessionOwner): Partial<SessionState> {
   try {
@@ -108,7 +187,8 @@ sessionStore.subscribe((state) => {
 });
 
 export function switchSessionOwner(username: string): void {
-  if (username === sessionOwner) return;
+	if (username === sessionOwner) return;
+	cloudUserId = null;
   sessionOwner = username;
 	const stored = loadFromStorage(username);
 	const base = username === GUEST_USERNAME ? guestSessionDefaults : defaultSession;
@@ -117,11 +197,11 @@ export function switchSessionOwner(username: string): void {
     ...stored,
     userId: username,
     loadedPuzzles: []
-  });
+	});
 }
 
 export const loadPuzzles = (puzzles: Puzzle[]) => {
-  sessionStore.update(s => {
+	  sessionStore.update(s => {
     let activePuzzle: Puzzle | null =
       puzzles.find(puzzle => puzzle.id === s.activePuzzle?.id) || puzzles[0] || null;
     const lastAttempt = (s.history ?? []).at(-1);
@@ -162,7 +242,6 @@ export const recordPuzzleAttempt = (
       previous: (s.srs ?? {})[puzzle.id]
     });
     const newElo = Math.max(100, userElo + result.eloDelta);
-    if (s.userId) sessionRepository.persistRating(s.userId, skill, result.subType, newElo).catch(() => {});
 
 		const trainingAttempt = createTrainingAttempt({
 			id: `tactics:${puzzle.id}:${attemptedAt}:${s.trainingAttempts.length}`,
@@ -198,8 +277,17 @@ export const recordPuzzleAttempt = (
 	      }],
 		trainingAttempts,
 		moduleProgress: createProgressMap(trainingAttempts, s.userId === GUEST_USERNAME)
-    };
-  });
+	    };
+	  });
+	// Persist the same authoritative records used to update the in-memory session.
+	const snapshot = get(sessionStore);
+	if (snapshot.trainingAttempts.length) {
+		const subtype = puzzle.tags[0] ?? 'general';
+		persistCloudRating(skill, subtype, snapshot.ratings[`${skill}:${subtype}`] ?? 1200);
+		const card = snapshot.srs[puzzle.id];
+		if (card) persistCloudSrs(puzzle.id, card);
+		persistCloudAttempt(snapshot.trainingAttempts.at(-1)!);
+	}
 
   return result;
 };
@@ -242,6 +330,7 @@ export function recordTrainingAttempt(params: {
 		const trainingAttempts = [...state.trainingAttempts, recorded].slice(-500);
 		return { ...state, trainingAttempts, moduleProgress: createProgressMap(trainingAttempts, state.userId === GUEST_USERNAME), srs: { ...state.srs, [params.exerciseId]: { puzzleId: params.exerciseId, ...next } } };
 	});
+	persistCloudAttempt(recorded);
 	return recorded;
 }
 

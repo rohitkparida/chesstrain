@@ -20,6 +20,8 @@ export type AssistanceLevel = 'none' | 'hint' | 'guided' | 'solution';
 export type ExerciseSource = 'curated' | 'lichess' | 'personal-game' | 'repertoire' | 'generated' | 'tablebase';
 export type ExerciseVerification = 'curated' | 'stockfish' | 'tablebase';
 export type ExerciseMemoryMode = 'exact-position' | 'concept-variation';
+/** How an exercise decides whether an answer is acceptable. */
+export type ExerciseAnswerMode = 'forced-line' | 'best-move' | 'equivalent-moves' | 'plan-rubric';
 
 export const ASSISTANCE_SCORE_MULTIPLIER: Record<AssistanceLevel, number> = {
 	none: 1,
@@ -42,6 +44,7 @@ export interface TrainingExerciseBase {
 	positionFingerprint?: string;
 	generationVersion?: string;
 	memoryMode?: ExerciseMemoryMode;
+	answerMode?: ExerciseAnswerMode;
 }
 
 export interface BoardGripExercise extends Omit<TrainingExerciseBase, 'module' | 'type'> {
@@ -72,6 +75,7 @@ export interface CalculationExercise extends Omit<TrainingExerciseBase, 'module'
 	type: 'calculation';
 	fen?: string;
 	solution?: readonly string[];
+	answerMode?: Extract<ExerciseAnswerMode, 'forced-line'>;
 }
 
 export interface PositionalExercise extends Omit<TrainingExerciseBase, 'module' | 'type'> {
@@ -100,6 +104,7 @@ export interface MistakesExercise extends Omit<TrainingExerciseBase, 'module' | 
 	type: 'mistakes';
 	fen?: string;
 	playedMove?: string;
+	answerMode?: Extract<ExerciseAnswerMode, 'best-move'>;
 	bestMove?: string;
 }
 
@@ -177,6 +182,14 @@ export function createTrainingAttempt(params: {
 }
 
 export type DailyPlanReason = 'due-review' | 'weakest-unlocked' | 'new';
+
+/** A finite Today slot; it intentionally carries no drill-private data. */
+export interface DailyPlanCandidate {
+	id: string;
+	module: TrainingModuleId;
+	estimatedSeconds: number;
+	positionFingerprint?: string;
+}
 
 export interface DailyPlanItem {
 	exerciseId: string;

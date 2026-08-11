@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountColorFromHeaders, extractGameMoves, hasAmbiguousAccountColor, splitPgnGames } from './gameMistakes';
+import { accountColorFromHeaders, analyzeCandidatesForReview, extractGameMoves, hasAmbiguousAccountColor, reviewMistakeFromEvaluation, splitPgnGames } from './gameMistakes';
 
 describe('game mistake candidates', () => {
   it('extracts moves for one side with before and after positions', () => {
@@ -31,5 +31,31 @@ describe('game mistake candidates', () => {
     expect(accountColorFromHeaders({ White: 'alice', Black: 'bob' }, 'unknown')).toBeNull();
     expect(hasAmbiguousAccountColor('[Result "*"]\n\n1. e4 e5 *', 'alice')).toBe(true);
     expect(extractGameMoves('[Result "*"]\n\n1. e4 e5 *', 'b', 'alice').map((candidate) => candidate.move.san)).toEqual(['e5']);
+  });
+
+  it('normalizes engine evaluations into the shared review model', () => {
+    const candidate = extractGameMoves('[Result "*"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 a6 *', 'w')[2];
+    expect(reviewMistakeFromEvaluation(
+      candidate,
+      { bestMove: 'c4f7', evalCp: 30, mateIn: null, principalVariation: [], depth: 8 },
+      { bestMove: '', evalCp: 80, mateIn: null, principalVariation: [], depth: 8 },
+      'w'
+    )?.loss).toBe(110);
+  });
+
+  it('uses one evaluation loop for pasted-game review candidates', async () => {
+		const candidate = extractGameMoves('[Result "*"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 O-O *', 'w')[5];
+    const evaluations = [
+      { bestMove: 'e2e4', evalCp: 200, mateIn: null, principalVariation: [], depth: 8 },
+      { bestMove: '', evalCp: 100, mateIn: null, principalVariation: [], depth: 8 }
+    ];
+    const reviewed = await analyzeCandidatesForReview(
+      { getEval: async () => evaluations.shift()! },
+      [candidate],
+      'w',
+		{ minimumLossCp: 80, minimumDepth: 0 }
+    );
+    expect(reviewed).toHaveLength(1);
+    expect(reviewed[0]?.loss).toBe(300);
   });
 });
