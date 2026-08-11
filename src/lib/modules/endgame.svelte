@@ -8,6 +8,7 @@
   import { applyUciMove, sanForUciMove } from '../chess/moves';
   import { StockfishEngine } from '../chess/engine';
   import { recordModuleAttempt } from '../../stores/session';
+  import { qualityLabel } from '../learning/objectiveScoring';
   import { createLatestRequest, resolveLatest } from '../async/latestRequest';
   import {
     ENDGAME_SCENARIOS,
@@ -72,7 +73,7 @@
         revealedCues = true;
         rounds++;
         if (lastResult && scoreEndgameResult(scenario.theoreticalResult, lastResult).preserved) preserved++;
-        feedback = response && reply ? `Result ${lastResult === scenario.theoreticalResult ? 'preserved' : 'at risk'}. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Move recorded. No engine reply was available.';
+        feedback = `${qualityLabel(lastResult && scoreEndgameResult(scenario.theoreticalResult, lastResult).preserved ? 1 : 0)} ${response && reply ? `Result ${lastResult === scenario.theoreticalResult ? 'preserved' : 'at risk'}. Opponent played ${sanForUciMove(afterFen, reply)}.` : 'Move recorded. No engine reply was available.'}`;
     });
   }
 
@@ -100,7 +101,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Endgame practice" task="Win (or draw if defending) using clean technique." taskKeywords={['Win', 'draw', 'clean technique']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={rounds > 0 && !thinking} continueLabel="Next">
+<TrainingModuleShell title="Endgame practice" task="Win (or draw if defending) using clean technique. Any move preserving the theoretical result is acceptable." taskKeywords={['Win', 'draw', 'clean technique', 'preserving the theoretical result']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={rounds > 0 && !thinking} continueLabel="Next">
   <p class="scenario-meta">{scenario.title}</p>
   <ChessBoard
     fen={currentFen}

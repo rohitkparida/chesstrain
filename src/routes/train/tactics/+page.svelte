@@ -75,10 +75,12 @@
   function buildSolutionUcis(puzzle: PuzzleData): string[] {
     try {
       const game = new Chess(puzzle.fen);
-      return puzzle.solution.flatMap((notation) => {
+      const moves = puzzle.solution.map((notation) => {
         const move = game.move(notation);
-        return move ? [`${move.from}${move.to}${move.promotion ?? ''}`] : [];
+        if (!move) throw new Error('Invalid solution line');
+        return `${move.from}${move.to}${move.promotion ?? ''}`;
       });
+      return moves;
     } catch {
       return [];
     }

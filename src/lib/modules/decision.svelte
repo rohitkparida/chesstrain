@@ -3,6 +3,7 @@
   import { Chess } from 'chess.js';
   import ChessBoard from '../../components/ChessBoard.svelte';
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
+  import { qualityLabel } from '../learning/objectiveScoring';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import { getTerminalState } from '../chess/board';
   import { applyUciMove, sanForUciMove } from '../chess/moves';
@@ -107,7 +108,7 @@
   onDestroy(() => { engine?.terminate(); });
 </script>
 
-<TrainingModuleShell title="Choosing a Move" task="Complete the checklist before every move." taskKeywords={['checklist']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={committed && !thinking} continueLabel="Next">
+<TrainingModuleShell title="Choosing a Move" task="Complete the checklist before every move. Several strong moves may be acceptable." taskKeywords={['checklist', 'strong moves']} onReset={reset} onSkip={nextScenario} onContinue={nextScenario} continueVisible={committed && !thinking} continueLabel="Next">
   <p class="scenario-meta">Position after {scenario.opponentMove}</p>
 
   <ChessBoard
@@ -169,7 +170,7 @@
       {#if discoveredReply}<span>Engine reply: {discoveredReply}</span>{/if}
     </div>
   {/if}
-  <p class="status-text">{feedback}</p>
+  <p class="status-text">{rounds > 0 ? `${qualityLabel((process.processScore + (lastMoveQuality ?? 0)) / 2)} ` : ''}{feedback}</p>
 </TrainingModuleShell>
 
 <style>

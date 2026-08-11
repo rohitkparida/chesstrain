@@ -3,7 +3,7 @@ import type { PersonalMistakeExercise } from '$lib/chesscom/types';
 import type { EngineEval } from '$lib/chess/engine';
 
 export interface GameMoveCandidate { ply: number; moveNumber: number; color: 'w' | 'b'; move: Move; fen: string; afterFen: string; }
-export type ReviewMistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string };
+export type ReviewMistake = GameMoveCandidate & { bestMove: string; loss: number; gameId?: string; answerMode: 'best-move' };
 
 export interface ReviewAnalysisProgress {
 	completed: number;
@@ -21,7 +21,7 @@ export function reviewMistakeFromEvaluation(
 	const beforeScore = perspective === 'w' ? before.evalCp : -before.evalCp;
 	const afterScore = perspective === 'w' ? -after.evalCp : after.evalCp;
 	const loss = Math.max(0, Math.round(beforeScore - afterScore));
-	return loss >= minimumLossCp ? { ...candidate, bestMove: before.bestMove, loss } : null;
+	return loss >= minimumLossCp ? { ...candidate, bestMove: before.bestMove, loss, answerMode: 'best-move' } : null;
 }
 
 export function personalMistakeToReview(exercise: PersonalMistakeExercise): ReviewMistake | null {
@@ -37,7 +37,7 @@ export function personalMistakeToReview(exercise: PersonalMistakeExercise): Revi
     try { played = board.move(exercise.playedSan); } catch { /* malformed persisted move */ }
   }
   if (!played) return null;
-  return { ply: exercise.ply, moveNumber: Math.ceil(exercise.ply / 2), color: played.color, move: played, fen: exercise.fen, afterFen: exercise.afterFen, bestMove: exercise.bestMove, loss: exercise.lossCp, gameId: exercise.gameId };
+  return { ply: exercise.ply, moveNumber: Math.ceil(exercise.ply / 2), color: played.color, move: played, fen: exercise.fen, afterFen: exercise.afterFen, bestMove: exercise.bestMove, loss: exercise.lossCp, gameId: exercise.gameId, answerMode: 'best-move' };
 }
 
 /**

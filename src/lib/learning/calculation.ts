@@ -1,3 +1,5 @@
+import { Chess } from 'chess.js';
+
 export type CalculationStatus = 'empty' | 'partial' | 'correct' | 'incorrect';
 
 export interface CalculationAssessment {
@@ -8,6 +10,17 @@ export interface CalculationAssessment {
 	score: number | null;
 	revealSolution: boolean;
 	feedback: string;
+}
+
+/** Validate that a curated calculation line is a complete legal continuation. */
+export function isLegalCalculationLine(startFen: string, solution: readonly string[]): boolean {
+	if (!startFen || solution.length === 0) return false;
+	try {
+		const game = new Chess(startFen);
+		return solution.every((notation) => Boolean(game.move(notation)));
+	} catch {
+		return false;
+	}
 }
 
 export function assessCalculation(input: string, solution: string[]): CalculationAssessment {

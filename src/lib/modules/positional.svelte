@@ -3,9 +3,10 @@
   import ObjectiveMetrics from '../../components/ObjectiveMetrics.svelte';
   import TrainingModuleShell from '../../components/TrainingModuleShell.svelte';
   import type { BoardAnnotation } from '../chess/annotations';
-  import { scorePositionalAnalysis, type PositionalRubricScore } from '../learning/objectiveScoring';
+  import { scorePositionalAnalysis, qualityLabel, type PositionalRubricScore } from '../learning/objectiveScoring';
   import { recordModuleAttempt } from '../../stores/session';
   import { POSITIONAL_FEN, POSITIONAL_OVERLAYS, POSITIONAL_PLANS } from './positionalScenarioContent';
+  import { explainPositionalResult } from './positionalFeedback';
   
   let evalScore = $state(0);
   let feedback = $state("");
@@ -41,7 +42,8 @@
       planOrder: plans.map((plan) => plan.id),
     });
     recordModuleAttempt({ exerciseId: 'positional-core-analysis', module: 'positional', correctness: rubric.total / 100, startedAt, tags: ['positional'], source: 'curated', positionFingerprint: positionFen });
-    feedback = `Reference model: White is slightly better (about +0.5), with pressure on d6. Preferred plan: B, reroute the knight toward e5.`;
+    const stars = qualityLabel(rubric.total / 100);
+    feedback = `${stars} ${explainPositionalResult(rubric)}`;
   }
 
   function movePlanUp(index: number) {
@@ -79,7 +81,7 @@
 
 <TrainingModuleShell
   title="Understanding the Position"
-  task="Evaluate the position and rank the plans."
+  task="Evaluate the position and rank the plans. This is scored as a plan rubric, not one exact move."
   taskKeywords={['Evaluate', 'rank the plans']}
   onReset={reset}
   onSkip={reset}

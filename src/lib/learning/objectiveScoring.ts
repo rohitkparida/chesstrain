@@ -20,6 +20,17 @@ export interface DecisionEvidence {
 	refutationReady: boolean;
 }
 
+/** Compact, human-readable quality band for longer reflective exercises. */
+export function qualityStars(score: number): 1 | 2 | 3 {
+	if (score >= 0.8) return 3;
+	if (score >= 0.5) return 2;
+	return 1;
+}
+
+export function qualityLabel(score: number): string {
+	return '★'.repeat(qualityStars(score));
+}
+
 export function accuracyPercent(correct: number, attempts: number): number | null {
 	if (attempts <= 0) return null;
 	return Math.round((correct / attempts) * 100);

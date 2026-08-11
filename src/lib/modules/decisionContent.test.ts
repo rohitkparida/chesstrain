@@ -5,6 +5,7 @@ describe('decision content contract', () => {
 	const scenario = DECISION_SCENARIOS[0];
 
 	it('rejects filler and duplicate candidate entries', () => {
+		expect(scenario.answerMode).toBe('equivalent-moves');
 		expect(scoreDecisionProcess(scenario, {
 			threatId: scenario.expectedThreat,
 			candidateIds: ['filler', 'filler'],
