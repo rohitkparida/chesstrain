@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import type { StepwiseDrillDefinition } from '../types';
 import { DRILL_METADATA } from '../metadata';
-import { generateProceduralTacticsPuzzle, type ProceduralPuzzle } from '$lib/learning/proceduralTactics';
+import { generateLiveTacticalPuzzle, generateProceduralTacticsPuzzle, type ProceduralPuzzle } from '$lib/learning/proceduralTactics';
 
 const meta = DRILL_METADATA['tactics.random'];
 
@@ -38,8 +38,8 @@ export function normalizeSolutionToUcis(fen: string, solution: string[]): string
 export const drill: StepwiseDrillDefinition<'move'> = {
   ...meta,
   version: 1,
-  generate(context) {
-    const puzzle = generateProceduralTacticsPuzzle(context.random);
+  async generate(context) {
+    const puzzle = await generateLiveTacticalPuzzle({ random: context.random }) ?? generateProceduralTacticsPuzzle(context.random);
     const solutionUcis = normalizeSolutionToUcis(puzzle.fen, puzzle.solution);
 
     const isBlack = puzzle.fen.includes(' b ');
