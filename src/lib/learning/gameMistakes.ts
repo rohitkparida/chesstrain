@@ -49,18 +49,29 @@ export async function analyzeCandidatesForReview(
 	engine: { getEval(fen: string, options?: { moveTimeMs?: number; signal?: AbortSignal }): Promise<EngineEval> },
 	candidates: GameMoveCandidate[],
 	perspective: AccountColor,
-	options: { minimumLossCp?: number; moveTimeMs?: number; signal?: AbortSignal; onProgress?: (progress: ReviewAnalysisProgress) => void; onResult?: (review: ReviewMistake) => void } = {}
+	options: { minimumLossCp?: number; moveTimeMs?: number; minimumDepth?: number; maxResults?: number; signal?: AbortSignal; onProgress?: (progress: ReviewAnalysisProgress) => void; onResult?: (review: ReviewMistake) => void } = {}
 ): Promise<ReviewMistake[]> {
-	const minimumLossCp = options.minimumLossCp ?? 80;
+	const minimumLossCp = options.minimumLossCp ?? 150;
+	const minimumDepth = options.minimumDepth ?? 6;
+	const maxResults = options.maxResults ?? candidates.length;
 	const moveTimeMs = options.moveTimeMs ?? 250;
 	const found: ReviewMistake[] = [];
+	const seenPositions = new Set<string>();
 	for (let index = 0; index < candidates.length; index += 1) {
 		if (options.signal?.aborted) return found;
 		const candidate = candidates[index];
+		if (candidate.moveNumber <= 5 || seenPositions.has(candidate.fen) || found.length >= maxResults) {
+			options.onProgress?.({ completed: index + 1, total: candidates.length });
+			continue;
+		}
 		const before = await engine.getEval(candidate.fen, { moveTimeMs, signal: options.signal });
 		const after = await engine.getEval(candidate.afterFen, { moveTimeMs, signal: options.signal });
+		if (before.depth < minimumDepth || after.depth < minimumDepth) {
+			options.onProgress?.({ completed: index + 1, total: candidates.length });
+			continue;
+		}
 		const review = reviewMistakeFromEvaluation(candidate, before, after, perspective, minimumLossCp);
-		if (review) { found.push(review); options.onResult?.(review); }
+		if (review) { found.push(review); seenPositions.add(candidate.fen); options.onResult?.(review); }
 		options.onProgress?.({ completed: index + 1, total: candidates.length });
 	}
 	return found;

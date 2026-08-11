@@ -44,7 +44,7 @@ describe('game mistake candidates', () => {
   });
 
   it('uses one evaluation loop for pasted-game review candidates', async () => {
-    const candidate = extractGameMoves('[Result "*"]\n\n1. e4 e5 *', 'w')[0];
+		const candidate = extractGameMoves('[Result "*"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 O-O *', 'w')[5];
     const evaluations = [
       { bestMove: 'e2e4', evalCp: 200, mateIn: null, principalVariation: [], depth: 8 },
       { bestMove: '', evalCp: 100, mateIn: null, principalVariation: [], depth: 8 }
@@ -53,7 +53,7 @@ describe('game mistake candidates', () => {
       { getEval: async () => evaluations.shift()! },
       [candidate],
       'w',
-      { minimumLossCp: 80 }
+		{ minimumLossCp: 80, minimumDepth: 0 }
     );
     expect(reviewed).toHaveLength(1);
     expect(reviewed[0]?.loss).toBe(300);
