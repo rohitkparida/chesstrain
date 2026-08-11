@@ -28,32 +28,27 @@ export function buildFenFromMap(boardMap: Map<string, { type: PieceSymbol; color
 }
 
 export function generateRandomPosition(targetCount: number, random: () => number = Math.random): { fen: string; pieceCount: number } {
-	const boardMap = new Map<string, { type: PieceSymbol; color: Color }>();
-	const shuffledSquares = [...ALL_SQUARES].sort(() => random() - 0.5);
-
-	const wKingSquare = shuffledSquares.pop()!;
-	const bKingSquare = shuffledSquares.pop()!;
-	boardMap.set(wKingSquare, { type: 'k', color: 'w' });
-	boardMap.set(bKingSquare, { type: 'k', color: 'b' });
-
-	let placed = 2;
-	const pieceTypes: PieceSymbol[] = ['r', 'b', 'n', 'q', 'p'];
-
-	while (placed < targetCount && shuffledSquares.length > 0) {
-		const sq = shuffledSquares.pop()!;
-		const color: Color = random() > 0.5 ? 'w' : 'b';
-		let type = pieceTypes[Math.floor(random() * pieceTypes.length)] ?? 'p';
-
-		if (type === 'p' && (sq.endsWith('1') || sq.endsWith('8'))) {
-			type = 'n';
-		}
-
-		boardMap.set(sq, { type, color });
-		placed++;
+	const seeds = [
+		'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+		'r1bq1rk1/ppp2ppp/2np1n2/8/2BPP3/2N2N2/PPP2PPP/R1BQ1RK1 w - - 0 1',
+		'r2q1rk1/pp1b1ppp/2n1pn2/3p4/3P4/2PBPN2/PP1N1PPP/R2Q1RK1 w - - 0 1'
+	];
+	const game = new Chess(seeds[Math.floor(random() * seeds.length)] ?? seeds[0]);
+	const plies = 8 + Math.floor(random() * 18);
+	for (let ply = 0; ply < plies && !game.isGameOver(); ply += 1) {
+		const moves = game.moves({ verbose: true });
+		if (!moves.length) break;
+		game.move(moves[Math.floor(random() * moves.length)] ?? moves[0]);
 	}
-
-	const fen = buildFenFromMap(boardMap);
-	return { fen, pieceCount: placed };
+	const boardMap = new Map<string, { type: PieceSymbol; color: Color }>();
+	for (const row of game.board()) for (const piece of row) if (piece) boardMap.set(piece.square, { type: piece.type, color: piece.color });
+	const removable = [...boardMap.entries()].filter(([, piece]) => piece.type !== 'k');
+	while (boardMap.size > Math.max(2, targetCount) && removable.length > 0) {
+		const index = Math.floor(random() * removable.length);
+		const [square] = removable.splice(index, 1)[0];
+		boardMap.delete(square);
+	}
+	return { fen: buildFenFromMap(boardMap), pieceCount: boardMap.size };
 }
 
 export function targetPieceCount(difficulty: number): number {
